@@ -179,6 +179,38 @@ export function generateTwoGroupPlayoffRounds(
   ])
 }
 
+export function parseGroupPlayoffFixtures(value: unknown): GroupPlayoffFixtures {
+  const isRecord = (item: unknown): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && !Array.isArray(item))
+  if (!isRecord(value) || value.format !== 'GROUP_PLAYOFFS' || !Array.isArray(value.qualifiers) || value.qualifiers.length !== 2 || !Array.isArray(value.rounds) || value.rounds.length !== 2) {
+    throw new Error('Saved playoff fixtures have an invalid format.')
+  }
+  const qualifiers = value.qualifiers.map((item) => {
+    if (!isRecord(item) || typeof item.groupName !== 'string' || !item.groupName.trim() || typeof item.winnerId !== 'string' || !item.winnerId.trim() || typeof item.runnerUpId !== 'string' || !item.runnerUpId.trim() || item.winnerId === item.runnerUpId) {
+      throw new Error('Saved playoff qualifiers are invalid.')
+    }
+    return { groupName: item.groupName, winnerId: item.winnerId, runnerUpId: item.runnerUpId }
+  })
+  const ids = qualifiers.flatMap(({ winnerId, runnerUpId }) => [winnerId, runnerUpId])
+  if (qualifiers[0].groupName === qualifiers[1].groupName || new Set(ids).size !== 4) throw new Error('Saved playoff qualifiers are invalid.')
+
+  const firstRound = value.rounds[0]
+  const finalRound = value.rounds[1]
+  const isTeam = (entry: unknown, id: string) => isRecord(entry) && entry.type === 'team' && isRecord(entry.team) && entry.team.id === id && typeof entry.team.name === 'string' && Boolean(entry.team.name.trim())
+  const isWinner = (entry: unknown, matchNumber: number) => isRecord(entry) && entry.type === 'winner' && entry.matchNumber === matchNumber
+  if (!isRecord(firstRound) || firstRound.name !== 'Semi-finals' || !Array.isArray(firstRound.matches) || firstRound.matches.length !== 2
+    || !isRecord(firstRound.matches[0]) || firstRound.matches[0].number !== 1 || firstRound.matches[0].bye !== false
+    || !isTeam(firstRound.matches[0].teamA, qualifiers[0].winnerId) || !isTeam(firstRound.matches[0].teamB, qualifiers[1].runnerUpId)
+    || !isRecord(firstRound.matches[1]) || firstRound.matches[1].number !== 2 || firstRound.matches[1].bye !== false
+    || !isTeam(firstRound.matches[1].teamA, qualifiers[1].winnerId) || !isTeam(firstRound.matches[1].teamB, qualifiers[0].runnerUpId)
+    || !isRecord(finalRound) || finalRound.name !== 'Final' || !Array.isArray(finalRound.matches) || finalRound.matches.length !== 1
+    || !isRecord(finalRound.matches[0]) || finalRound.matches[0].number !== 1 || finalRound.matches[0].bye !== false
+    || !isWinner(finalRound.matches[0].teamA, 1) || !isWinner(finalRound.matches[0].teamB, 2)) {
+    throw new Error('Saved playoff bracket does not match its qualifiers.')
+  }
+
+  return { qualifiers, rounds: value.rounds as KnockoutRound[] }
+}
+
 export function generateRoundRobinRounds(teams: readonly FixtureTeam[]): RoundRobinRound[] {
   if (teams.length < 2) throw new Error('A round-robin schedule needs at least two teams.')
   if (teams.length > ROUND_ROBIN_TEAM_LIMIT) throw new Error(`A round-robin schedule supports up to ${ROUND_ROBIN_TEAM_LIMIT} teams.`)

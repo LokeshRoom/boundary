@@ -35,6 +35,7 @@
 - [x] Generate a cross-group semifinal bracket from selected qualifiers in a two-group stage.
 - [x] Select winners and runners-up and preview cross-group semifinals for a two-group stage.
 - [x] Persist and reload the selected two-group playoff bracket with organizer-only creation.
+- [x] Validate stored playoff qualifiers and semifinals before displaying the bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [x] Detect and enforce innings completion at the overs limit or when all but one batter are out.
 - [x] Record batter runs and the no-ball extra together without counting a legal ball.

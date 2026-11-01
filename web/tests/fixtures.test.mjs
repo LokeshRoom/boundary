@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, generateTwoGroupPlayoffRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT } from '../src/fixtures.ts'
+import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, generateTwoGroupPlayoffRounds, listPlayableFixtures, parseGroupPlayoffFixtures, ROUND_ROBIN_TEAM_LIMIT } from '../src/fixtures.ts'
 
 const teams = ['A', 'B', 'C', 'D'].map((id) => ({ id, name: id }))
 
@@ -68,6 +68,17 @@ test('generates a cross-group semifinal bracket from selected winners and runner
     { winnerId: groups[1].teams[0].id, runnerUpId: groups[0].teams[1].id },
     { winnerId: groups[1].teams[0].id, runnerUpId: groups[1].teams[1].id },
   ]), /belong to its group/)
+})
+
+test('validates saved group playoff qualifiers and bracket relationships', () => {
+  const groups = generateGroupStage(teams, 2)
+  const qualifiers = groups.map((group) => ({ groupName: group.name, winnerId: group.teams[0].id, runnerUpId: group.teams[1].id }))
+  const rounds = generateTwoGroupPlayoffRounds(groups, qualifiers)
+  const saved = { format: 'GROUP_PLAYOFFS', qualifiers, rounds }
+
+  assert.deepEqual(parseGroupPlayoffFixtures(saved), { qualifiers, rounds })
+  assert.throws(() => parseGroupPlayoffFixtures({ ...saved, qualifiers: [{ ...qualifiers[0], winnerId: '' }, qualifiers[1] ] }), /qualifiers are invalid/)
+  assert.throws(() => parseGroupPlayoffFixtures({ ...saved, rounds: [{ ...rounds[0], matches: [] }, rounds[1] ] }), /does not match its qualifiers/)
 })
 
 test('lists concrete playable matches and excludes byes and unresolved knockout entrants', () => {

@@ -1,5 +1,5 @@
 import { getFirebaseFirestore } from './firebase'
-import type { GroupPlayoffFixtures, GroupStageGroup, KnockoutRound, PlayableFixture, RoundRobinRound } from './fixtures'
+import { parseGroupPlayoffFixtures, type GroupPlayoffFixtures, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
 import { flattenOverBatches, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, type LiveMatchSnapshot, type OverDeliveryBatch, type PublicLiveMatchSummary } from './scoring'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
@@ -309,7 +309,5 @@ export async function getGroupPlayoffFixtures(tournamentId: string): Promise<Gro
   const snapshot = await getDoc(doc(firestore, 'tournaments', tournamentId, 'fixtures', 'playoffs'))
   if (!snapshot.exists()) return null
 
-  const fixture = snapshot.data()
-  if (fixture.format !== 'GROUP_PLAYOFFS' || !Array.isArray(fixture.qualifiers) || fixture.qualifiers.length !== 2 || !Array.isArray(fixture.rounds) || fixture.rounds.length !== 2) throw new Error('Saved playoff fixtures have an invalid format.')
-  return { qualifiers: fixture.qualifiers as GroupPlayoffFixtures['qualifiers'], rounds: fixture.rounds as KnockoutRound[] }
+  return parseGroupPlayoffFixtures(snapshot.data())
 }
