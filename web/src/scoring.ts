@@ -1,3 +1,5 @@
+import type { FixtureTeam } from './fixtures'
+
 export type ExtrasType = 'WIDE' | 'NO_BALL' | 'BYE' | 'LEG_BYE' | 'PENALTY'
 export type DismissalType = 'BOWLED' | 'CAUGHT' | 'LBW' | 'RUN_OUT' | 'STUMPED' | 'HIT_WICKET' | 'RETIRED_OUT'
 
@@ -59,6 +61,37 @@ export type LiveMatchSnapshot = {
   currentInnings: 1 | 2
   scoreSummary: InningsSummary
   recentBalls: DeliveryEvent[]
+}
+
+export type PublicLiveMatchSummary = {
+  tournamentId: string
+  fixtureId: string
+  stage: 'KNOCKOUT' | 'LEAGUE' | 'GROUP'
+  roundName: string
+  groupName?: string
+  matchNumber: number
+  teamA: FixtureTeam
+  teamB: FixtureTeam
+  snapshot: LiveMatchSnapshot
+}
+
+export function parsePublicLiveMatchSummary(value: unknown, tournamentId: string, fixtureId: string, ballsPerOver: number): PublicLiveMatchSummary {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Saved live match data is invalid.')
+  const match = value as Record<string, unknown>
+  const isText = (text: unknown): text is string => typeof text === 'string' && text.trim().length > 0
+  const isTeam = (team: unknown): team is FixtureTeam => Boolean(team && typeof team === 'object' && !Array.isArray(team) && isText((team as Record<string, unknown>).id) && isText((team as Record<string, unknown>).name))
+  if (match.tournamentId !== tournamentId || match.fixtureId !== fixtureId || !['KNOCKOUT', 'LEAGUE', 'GROUP'].includes(match.stage as string) || !isText(match.roundName) || !Number.isInteger(match.matchNumber) || (match.matchNumber as number) < 1 || !isTeam(match.teamA) || !isTeam(match.teamB) || (match.groupName !== undefined && !isText(match.groupName))) throw new Error('Saved live match data is invalid.')
+  return {
+    tournamentId,
+    fixtureId,
+    stage: match.stage as PublicLiveMatchSummary['stage'],
+    roundName: match.roundName,
+    ...(match.groupName ? { groupName: match.groupName as string } : {}),
+    matchNumber: match.matchNumber as number,
+    teamA: match.teamA,
+    teamB: match.teamB,
+    snapshot: parseLiveMatchSnapshot(match, ballsPerOver),
+  }
 }
 
 export function parseLiveMatchSnapshot(value: unknown, ballsPerOver: number): LiveMatchSnapshot {

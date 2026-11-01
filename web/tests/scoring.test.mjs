@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, parseLiveMatchSnapshot, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -134,6 +134,20 @@ test('validates saved live snapshot totals and every recent delivery before rest
   assert.throws(() => parseLiveMatchSnapshot({ ...snapshot, scoreSummary: { ...snapshot.scoreSummary, runs: 5 } }, 6), /inconsistent/)
   assert.throws(() => parseLiveMatchSnapshot({ ...snapshot, recentBalls: [{}] }, 6), /striker ID/)
   assert.throws(() => parseLiveMatchSnapshot(snapshot, 0), /positive integer/)
+})
+
+test('validates public live match metadata and its bounded score snapshot', () => {
+  const match = {
+    tournamentId: 'tournament-1', fixtureId: 'fixture-1', stage: 'GROUP', groupName: 'Group A', roundName: 'Round 1', matchNumber: 2,
+    teamA: { id: 'team-a', name: 'Cedar CC' }, teamB: { id: 'team-b', name: 'Ridge Club' },
+    ...buildLiveMatchSnapshot([delivery({ runsOffBat: 4 })], 6),
+  }
+  const parsed = parsePublicLiveMatchSummary(match, 'tournament-1', 'fixture-1', 6)
+  assert.equal(parsed.teamA.name, 'Cedar CC')
+  assert.equal(parsed.snapshot.scoreSummary.runs, 4)
+  assert.throws(() => parsePublicLiveMatchSummary({ ...match, fixtureId: 'other' }, 'tournament-1', 'fixture-1', 6), /invalid/)
+  assert.throws(() => parsePublicLiveMatchSummary({ ...match, teamB: { id: '', name: 'Ridge Club' } }, 'tournament-1', 'fixture-1', 6), /invalid/)
+  assert.throws(() => parsePublicLiveMatchSummary({ ...match, stage: 'UNKNOWN' }, 'tournament-1', 'fixture-1', 6), /invalid/)
 })
 
 test('ends an innings at the legal-ball limit or when all but one batter are out', () => {

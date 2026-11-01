@@ -1,6 +1,6 @@
 import { getFirebaseFirestore } from './firebase'
 import type { GroupStageGroup, KnockoutRound, PlayableFixture, RoundRobinRound } from './fixtures'
-import { flattenOverBatches, parseLiveMatchSnapshot, type LiveMatchSnapshot, type OverDeliveryBatch } from './scoring'
+import { flattenOverBatches, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, type LiveMatchSnapshot, type OverDeliveryBatch, type PublicLiveMatchSummary } from './scoring'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
@@ -70,6 +70,13 @@ export async function getLiveMatchSnapshot(tournamentId: string, fixture: Playab
     throw new Error('Saved live match data is invalid.')
   }
   return parseLiveMatchSnapshot(match, ballsPerOver)
+}
+
+export async function getPublicLiveMatchSummary(tournamentId: string, fixtureId: string, ballsPerOver: number): Promise<PublicLiveMatchSummary | null> {
+  if (!tournamentId.trim() || !fixtureId.trim() || tournamentId.includes('/') || fixtureId.includes('/')) throw new Error('Valid tournament and fixture IDs are required.')
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixtureId)))
+  return snapshot.exists() ? parsePublicLiveMatchSummary(snapshot.data(), tournamentId, fixtureId, ballsPerOver) : null
 }
 
 export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number) {
