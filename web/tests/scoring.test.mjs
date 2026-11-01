@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -50,6 +50,18 @@ test('records no-balls with batter runs without consuming a legal ball', () => {
   assert.equal(boundaryNoBall.completedRuns, 0)
   assert.deepEqual(advanceBattingEnds(ends, boundaryNoBall, 0, 6), ends)
   assert.throws(() => makeNoBallDelivery('batter-1', 'bowler-1', 5), /supported/)
+})
+
+test('records wide penalties and completed runs for totals and strike rotation', () => {
+  const wide = makeWideDelivery('batter-1', 'bowler-1', 2, 1)
+  const ends = { strikerId: 'batter-1', nonStrikerId: 'batter-2' }
+
+  assert.equal(summarizeInnings([wide], 6).runs, 2)
+  assert.equal(summarizeInnings([wide], 6).legalBalls, 0)
+  assert.equal(summarizeBowlingScorecard([wide], ['bowler-1'], 6)[0].runsConceded, 2)
+  assert.deepEqual(advanceBattingEnds(ends, wide, 0, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
+  assert.deepEqual(advanceBattingEnds(ends, makeWideDelivery('batter-1', 'bowler-1', 5, 0), 0, 6), ends)
+  assert.throws(() => makeWideDelivery('batter-1', 'bowler-1', 1, 1), /valid wide/)
 })
 
 test('undo removes only the most recent delivery', () => {

@@ -162,6 +162,23 @@ export function makeNoBallDelivery(strikerId: string, bowlerId: string, runsOffB
   return delivery
 }
 
+export function makeWideDelivery(strikerId: string, bowlerId: string, extrasRuns: number, completedRuns: number): DeliveryEvent {
+  const validRuns = (completedRuns === 0 && [1, 5].includes(extrasRuns)) || (completedRuns > 0 && extrasRuns === completedRuns + 1)
+  if (!validRuns) throw new Error('Choose a valid wide result.')
+  const delivery: DeliveryEvent = {
+    strikerId,
+    bowlerId,
+    completedRuns,
+    runsOffBat: 0,
+    extrasType: 'WIDE',
+    extrasRuns,
+    legalBall: false,
+    isWicket: false,
+  }
+  validateDelivery(delivery)
+  return delivery
+}
+
 export function advanceBattingEnds(
   ends: BattingEnds,
   delivery: DeliveryEvent,
