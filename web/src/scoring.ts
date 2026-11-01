@@ -84,6 +84,19 @@ export function formatDeliveryLabel(delivery: DeliveryEvent): string {
   return String(delivery.runsOffBat + (delivery.extrasType === 'PENALTY' ? delivery.extrasRuns : 0))
 }
 
+export function formatExtrasSummary(extras: InningsSummary['extras']): string {
+  const labels: Array<[keyof InningsSummary['extras'], string]> = [
+    ['WIDE', 'wides'],
+    ['NO_BALL', 'no-balls'],
+    ['BYE', 'byes'],
+    ['LEG_BYE', 'leg-byes'],
+    ['PENALTY', 'penalty'],
+  ]
+  const detail = labels.filter(([type]) => extras[type] > 0).map(([type, label]) => `${label} ${extras[type]}`).join(', ')
+  const total = Object.values(extras).reduce((sum, runs) => sum + runs, 0)
+  return detail ? `Extras ${total} (${detail})` : 'Extras 0'
+}
+
 export function parsePublicLiveMatchSummary(value: unknown, tournamentId: string, fixtureId: string, ballsPerOver: number): PublicLiveMatchSummary {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Saved live match data is invalid.')
   const match = value as Record<string, unknown>

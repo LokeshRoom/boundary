@@ -12,6 +12,7 @@
 .public-scoreline > p { display: grid; gap: 4px; margin: 0; text-align: center; white-space: nowrap; }
 .public-scoreline > p strong { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(30px, 6vw, 42px); line-height: 1; }
 .public-scoreline > p span { color: #c5d6c8; font-size: 10px; }
+.public-match-extras { margin: 0; color: #d8e7cd; font-size: 12px; text-align: center; }
 .public-recent-balls { display: grid; gap: 12px; }
 .public-recent-balls h2 { display: flex; align-items: baseline; justify-content: space-between; margin: 0; color: #253b2e; font-family: 'Barlow Condensed', sans-serif; font-size: 23px; }
 .public-recent-balls h2 span { color: #748076; font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500; }

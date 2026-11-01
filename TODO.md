@@ -38,6 +38,7 @@
 - [x] Record batter runs and the no-ball extra together without counting a legal ball.
 - [x] Record common wide penalties and completed runs for correct totals and strike rotation.
 - [x] Show batter runs alongside wide and no-ball markers in the public recent-ball feed.
+- [x] Show the total and category breakdown of extras on the public scoreboard.
 - [x] Add a local-only scoring preview with run, wide, no-ball, wicket and replacement batter, recent-ball, undo, and batter-strike rotation controls.
 - [x] Connect selected-match scoring preview to restore and persist summary and over batches for organizers.
 - [ ] Complete the scoring console with real roster selection and both innings.

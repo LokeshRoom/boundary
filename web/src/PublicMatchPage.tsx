@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isFirebaseConfigured } from './firebase'
 import { getPublicLiveMatchSummary, getPublicTournamentScoreSettings } from './tournaments'
-import { formatDeliveryLabel, type PublicLiveMatchSummary } from './scoring'
+import { formatDeliveryLabel, formatExtrasSummary, type PublicLiveMatchSummary } from './scoring'
 import './App.css'
 import './PublicMatchPage.css'
 
@@ -43,6 +43,7 @@ export default function PublicMatchPage({ tournamentId, fixtureId }: { tournamen
             <p><strong>{match.snapshot.scoreSummary.runs}/{match.snapshot.scoreSummary.wickets}</strong><span>{match.snapshot.scoreSummary.overs} overs · {match.snapshot.scoreSummary.runRate.toFixed(2)} RPO</span></p>
             <div><span>{match.teamB.name}</span><strong>Team B</strong></div>
           </div>
+          <p className="public-match-extras">{formatExtrasSummary(match.snapshot.scoreSummary.extras)}</p>
           <section className="public-recent-balls" aria-label="Recent deliveries">
             <h2>Recent balls <span>Innings {match.snapshot.currentInnings}</span></h2>
             {match.snapshot.recentBalls.length ? <ol>{match.snapshot.recentBalls.map((ball, index) => <li key={`${index}-${ball.strikerId}`} className={ball.isWicket ? 'public-ball-wicket' : ball.extrasType ? 'public-ball-extra' : ''}>{formatDeliveryLabel(ball)}</li>)}</ol> : <p>No deliveries have been recorded.</p>}
