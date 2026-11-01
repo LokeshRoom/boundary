@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { summarizeBattingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
-const delivery = (overrides = {}) => ({ runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
+const delivery = (overrides = {}) => ({ strikerId: 'batter-1', runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
 test('summarizes runs, extras, wickets, legal balls, overs, and run rate', () => {
   const deliveries = [
@@ -10,7 +10,7 @@ test('summarizes runs, extras, wickets, legal balls, overs, and run rate', () =>
     delivery({ extrasType: 'WIDE', extrasRuns: 2, legalBall: false }),
     delivery({ runsOffBat: 2, extrasType: 'NO_BALL', extrasRuns: 1, legalBall: false }),
     delivery({ extrasType: 'BYE', extrasRuns: 1 }),
-    delivery({ isWicket: true }),
+    delivery({ isWicket: true, dismissedBatterId: 'batter-1' }),
     delivery({ runsOffBat: 1 }),
   ]
 
@@ -40,4 +40,23 @@ test('undo removes only the most recent delivery', () => {
   const deliveries = [delivery({ runsOffBat: 1 }), delivery({ runsOffBat: 4 })]
   assert.deepEqual(undoLastDelivery(deliveries), [deliveries[0]])
   assert.deepEqual(undoLastDelivery([]), [])
+})
+
+test('builds batting figures with wides excluded and no-balls faced', () => {
+  const scorecard = summarizeBattingScorecard([
+    delivery({ runsOffBat: 4 }),
+    delivery({ runsOffBat: 2, extrasType: 'NO_BALL', extrasRuns: 1, legalBall: false }),
+    delivery({ runsOffBat: 1, strikerId: 'batter-2', isWicket: true, dismissedBatterId: 'batter-1' }),
+    delivery({ strikerId: 'batter-2', extrasType: 'WIDE', extrasRuns: 1, legalBall: false }),
+  ], ['batter-1', 'batter-2'])
+
+  assert.deepEqual(scorecard, [
+    { playerId: 'batter-1', runs: 6, ballsFaced: 2, fours: 1, sixes: 0, dismissed: true, strikeRate: 300 },
+    { playerId: 'batter-2', runs: 1, ballsFaced: 1, fours: 0, sixes: 0, dismissed: false, strikeRate: 100 },
+  ])
+})
+
+test('batting scorecard rejects unknown batters and invalid wicket attribution', () => {
+  assert.throws(() => summarizeBattingScorecard([delivery()], ['batter-2']), /striker/)
+  assert.throws(() => summarizeBattingScorecard([delivery({ isWicket: true })], ['batter-1']), /dismissed batter/)
 })

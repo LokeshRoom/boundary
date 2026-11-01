@@ -32,7 +32,8 @@
 - [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [ ] Build the organizer ball-by-ball scoring console and persist match/over state.
-- [ ] Calculate batter and bowler scorecard statistics from delivery history.
+- [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
+- [ ] Calculate bowler figures and full scorecards from delivery history.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.
 - [ ] Verify Firebase Spark limits, production rules, and Firebase Hosting deployment.
