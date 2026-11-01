@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { summarizeBattingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
-const delivery = (overrides = {}) => ({ strikerId: 'batter-1', runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
+const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
 test('summarizes runs, extras, wickets, legal balls, overs, and run rate', () => {
   const deliveries = [
@@ -10,7 +10,7 @@ test('summarizes runs, extras, wickets, legal balls, overs, and run rate', () =>
     delivery({ extrasType: 'WIDE', extrasRuns: 2, legalBall: false }),
     delivery({ runsOffBat: 2, extrasType: 'NO_BALL', extrasRuns: 1, legalBall: false }),
     delivery({ extrasType: 'BYE', extrasRuns: 1 }),
-    delivery({ isWicket: true, dismissedBatterId: 'batter-1' }),
+    delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED' }),
     delivery({ runsOffBat: 1 }),
   ]
 
@@ -46,7 +46,7 @@ test('builds batting figures with wides excluded and no-balls faced', () => {
   const scorecard = summarizeBattingScorecard([
     delivery({ runsOffBat: 4 }),
     delivery({ runsOffBat: 2, extrasType: 'NO_BALL', extrasRuns: 1, legalBall: false }),
-    delivery({ runsOffBat: 1, strikerId: 'batter-2', isWicket: true, dismissedBatterId: 'batter-1' }),
+    delivery({ runsOffBat: 1, strikerId: 'batter-2', isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'RUN_OUT' }),
     delivery({ strikerId: 'batter-2', extrasType: 'WIDE', extrasRuns: 1, legalBall: false }),
   ], ['batter-1', 'batter-2'])
 
@@ -59,4 +59,26 @@ test('builds batting figures with wides excluded and no-balls faced', () => {
 test('batting scorecard rejects unknown batters and invalid wicket attribution', () => {
   assert.throws(() => summarizeBattingScorecard([delivery()], ['batter-2']), /striker/)
   assert.throws(() => summarizeBattingScorecard([delivery({ isWicket: true })], ['batter-1']), /dismissed batter/)
+})
+
+test('builds bowling figures while excluding byes, leg-byes, penalty runs, and uncredited wickets', () => {
+  const deliveries = [
+    delivery({ runsOffBat: 4 }),
+    delivery({ extrasType: 'WIDE', extrasRuns: 2, legalBall: false }),
+    delivery({ runsOffBat: 1, extrasType: 'NO_BALL', extrasRuns: 1, legalBall: false }),
+    delivery({ extrasType: 'BYE', extrasRuns: 3 }),
+    delivery({ extrasType: 'LEG_BYE', extrasRuns: 1 }),
+    delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED' }),
+    delivery({ runsOffBat: 1, isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'RUN_OUT' }),
+    delivery({ extrasType: 'PENALTY', extrasRuns: 5, legalBall: false }),
+  ]
+
+  assert.deepEqual(summarizeBowlingScorecard(deliveries, ['bowler-1'], 6), [
+    { playerId: 'bowler-1', runsConceded: 9, legalBalls: 5, overs: '0.5', wickets: 1, economy: 10.8 },
+  ])
+})
+
+test('bowling scorecard rejects unknown bowlers and mismatched wicket types', () => {
+  assert.throws(() => summarizeBowlingScorecard([delivery()], ['bowler-2'], 6), /bowling lineup/)
+  assert.throws(() => summarizeBowlingScorecard([delivery({ isWicket: true, dismissedBatterId: 'batter-1' })], ['bowler-1'], 6), /dismissal type/)
 })

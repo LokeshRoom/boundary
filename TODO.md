@@ -33,7 +33,8 @@
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [ ] Build the organizer ball-by-ball scoring console and persist match/over state.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
-- [ ] Calculate bowler figures and full scorecards from delivery history.
+- [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
+- [ ] Combine batting and bowling figures into full scorecards and publish them.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.
 - [ ] Verify Firebase Spark limits, production rules, and Firebase Hosting deployment.
