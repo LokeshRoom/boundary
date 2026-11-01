@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
-import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type RoundRobinRound } from './fixtures'
+import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
 import { getBattingEndsAfter, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { getGroupStageFixtures, getKnockoutFixtures, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
@@ -139,12 +139,14 @@ function TeamDialog({
   canManage,
   onTeamAdded,
   onRegistrationChanged,
+  onSelectFixture,
 }: {
   dialogRef: RefObject<HTMLDialogElement | null>
   tournament: Tournament | null
   canManage: boolean
   onTeamAdded: (tournamentId: string, teamCount: number) => void
   onRegistrationChanged: (tournamentId: string, registrationOpen: boolean) => void
+  onSelectFixture: (fixture: PlayableFixture, tournament: Tournament) => void
 }) {
   const [teams, setTeams] = useState<Team[]>([])
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([])
@@ -464,6 +466,11 @@ function TeamDialog({
   const groups: GroupStageGroup[] = showGroupStage && !loading && !loadingGroupStage && tournament?.format === 'Groups + playoffs' && teams.length >= 4 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
     ? hasSavedGroupStage ? savedGroups ?? [] : generateGroupStage(teams, selectedGroupCount)
     : []
+  const playableFixtures = listPlayableFixtures(
+    hasSavedBracket ? savedBracketRounds ?? [] : [],
+    hasSavedLeagueSchedule ? savedLeagueRounds ?? [] : [],
+    hasSavedGroupStage ? savedGroups ?? [] : [],
+  )
 
   return (
     <dialog className="create-dialog" ref={dialogRef} aria-labelledby="teams-title">
@@ -547,6 +554,17 @@ function TeamDialog({
             </div>}
             {groupStageMessageTournamentId === tournament.id && groupStageMessage && <p className="form-note" role="status">{groupStageMessage}</p>}
           </section>}
+          {playableFixtures.length > 0 && <section className="league-schedule" aria-label="Matches ready to score">
+            <h3>Matches ready to score</h3>
+            <div className="league-fixtures">{playableFixtures.map((fixture) => <div className="league-fixture" key={fixture.id}>
+              <strong>{fixture.teamA.name}</strong><span>vs</span><strong>{fixture.teamB.name}</strong>
+              <button className="roster-action" type="button" onClick={() => {
+                if (!tournament) return
+                onSelectFixture(fixture, tournament)
+                dialogRef.current?.close()
+              }}>Score preview</button>
+            </div>)}</div>
+          </section>}
           {showLeagueSchedule && loadingLeagueSchedule && <p className="form-note" role="status">Checking for a saved schedule...</p>}
           {showBracket && loadingBracket && <p className="form-note" role="status">Checking for a saved bracket...</p>}
           {showGroupStage && loadingGroupStage && <p className="form-note" role="status">Checking for saved group-stage fixtures...</p>}
@@ -589,6 +607,7 @@ function TeamDialog({
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
   const [previewDeliveries, setPreviewDeliveries] = useState<DeliveryEvent[]>([])
+  const [previewMatch, setPreviewMatch] = useState<{ tournamentName: string; fixture: PlayableFixture } | null>(null)
   const [organizer, setOrganizer] = useState<string | null>(null)
   const [organizerUid, setOrganizerUid] = useState<string | null>(null)
   const [loadedOrganizerUid, setLoadedOrganizerUid] = useState<string | null>(null)
@@ -647,6 +666,8 @@ function App() {
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
   const visibleTournaments = organizerUid ? tournaments : initialTournaments
   const previewScore = summarizeInnings(previewDeliveries, 6)
+  const previewTeamA = previewMatch?.fixture.teamA
+  const previewTeamB = previewMatch?.fixture.teamB
   const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
   const previewLineup = [
     { id: 'preview-batter-a', name: 'M. Patel' },
@@ -791,18 +812,18 @@ function App() {
             <article className="live-card" id="live-score">
               <div className="live-card-top">
                 <span className="live-label"><span className="pulse-dot" /> SCORING PREVIEW</span>
-                <span className="match-series">Sunday Turf League · Sample match</span>
+                <span className="match-series">{previewMatch ? `${previewMatch.tournamentName} · ${previewMatch.fixture.groupName ? `${previewMatch.fixture.groupName} · ` : ''}${previewMatch.fixture.roundName}` : 'Sunday Turf League · Sample match'}</span>
               </div>
               <div className="live-scoreline">
                 <div className="team-block">
-                  <span className="team-crest crest-cedar">CC</span>
-                  <div><strong>Cedar CC</strong><small>Batting</small></div>
+                  <span className="team-crest crest-cedar">{previewTeamA ? previewTeamA.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase() : 'CC'}</span>
+                  <div><strong>{previewTeamA?.name ?? 'Cedar CC'}</strong><small>Batting</small></div>
                 </div>
                 <div className="score-block"><strong>{previewScore.runs}<span>/{previewScore.wickets}</span></strong><small>{previewScore.overs} overs · {previewScore.runRate.toFixed(2)} RPO</small></div>
                 <span className="versus">V</span>
                 <div className="team-block team-away">
-                  <span className="team-crest crest-ridge">RC</span>
-                  <div><strong>Ridge Club</strong><small>Opponent</small></div>
+                  <span className="team-crest crest-ridge">{previewTeamB ? previewTeamB.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase() : 'RC'}</span>
+                  <div><strong>{previewTeamB?.name ?? 'Ridge Club'}</strong><small>Opponent</small></div>
                 </div>
               </div>
               <div className="live-card-bottom">
@@ -863,7 +884,10 @@ function App() {
         </div>
       </main>
       <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} canSave={Boolean(organizerUid)} />
-      <TeamDialog dialogRef={teamDialogRef} tournament={selectedTournament} canManage={Boolean(organizerUid && selectedTournament?.id)} onTeamAdded={updateTeamCount} onRegistrationChanged={updateRegistrationState} />
+      <TeamDialog dialogRef={teamDialogRef} tournament={selectedTournament} canManage={Boolean(organizerUid && selectedTournament?.id)} onTeamAdded={updateTeamCount} onRegistrationChanged={updateRegistrationState} onSelectFixture={(fixture, tournament) => {
+        setPreviewMatch({ tournamentName: tournament.name, fixture })
+        setPreviewDeliveries([])
+      }} />
     </div>
   )
 }

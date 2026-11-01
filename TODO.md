@@ -31,6 +31,7 @@
 - [x] Preview configurable group-stage round-robin schedules.
 - [x] Persist and reload generated group-stage fixtures.
 - [x] Identify concrete playable matches from saved knockout, league, and group schedules.
+- [x] Select a saved fixture into the session-only scoring preview.
 - [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [x] Detect innings completion at the overs limit or when all but one batter are out.
