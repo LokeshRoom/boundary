@@ -616,10 +616,20 @@ function App() {
   const visibleTournaments = organizerUid ? tournaments : initialTournaments
   const previewScore = summarizeInnings(previewDeliveries, 6)
   const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
+  const previewLineup = [
+    { id: 'preview-batter-a', name: 'M. Patel' },
+    { id: 'preview-batter-b', name: 'J. Cole' },
+    { id: 'preview-batter-c', name: 'S. Khan' },
+    { id: 'preview-batter-d', name: 'A. Reed' },
+  ]
   const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, 6)
-  const previewBatters = summarizeBattingScorecard(previewDeliveries, [previewOpeningEnds.strikerId, previewOpeningEnds.nonStrikerId])
+  const previewBatters = summarizeBattingScorecard(previewDeliveries, previewLineup.map(({ id }) => id))
   const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
   const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
+  const previewDismissed = new Set(previewBatters.filter((batter) => batter.dismissed).map((batter) => batter.playerId))
+  const previewIncoming = previewLineup.find(({ id }) => id !== previewEnds.strikerId && id !== previewEnds.nonStrikerId && !previewDismissed.has(id))
+  const previewInningsOver = previewScore.wickets >= previewLineup.length - 1
+  const previewCanRecordWicket = !previewInningsOver && (Boolean(previewIncoming) || previewScore.wickets === previewLineup.length - 2)
 
   function recordPreviewDelivery(delivery: DeliveryEvent) {
     setPreviewDeliveries((current) => [...current, delivery])
@@ -631,6 +641,11 @@ function App() {
 
   function recordPreviewExtra(extrasType: 'WIDE' | 'NO_BALL') {
     recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: 'preview-bowler', completedRuns: 0, runsOffBat: 0, extrasType, extrasRuns: 1, legalBall: false, isWicket: false })
+  }
+
+  function recordPreviewWicket() {
+    if (!previewCanRecordWicket) return
+    recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: 'preview-bowler', completedRuns: 0, dismissedBatterId: previewEnds.strikerId, dismissalType: 'BOWLED', ...(previewIncoming && { incomingBatterId: previewIncoming.id }), runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: true })
   }
 
   async function signIn() {
@@ -759,20 +774,21 @@ function App() {
                 </div>
               </div>
               <div className="live-card-bottom">
-                <div className="current-batters"><span>BATTERS</span><strong>{previewEnds.strikerId === previewOpeningEnds.strikerId ? 'M. Patel' : 'J. Cole'}* <b>{previewStriker.runs}</b> <small>({previewStriker.ballsFaced})</small></strong><strong>{previewEnds.nonStrikerId === previewOpeningEnds.nonStrikerId ? 'J. Cole' : 'M. Patel'} <b>{previewNonStriker.runs}</b> <small>({previewNonStriker.ballsFaced})</small></strong></div>
+                {previewInningsOver ? <div className="current-batters"><span>INNINGS</span><strong>ALL OUT · {previewScore.runs}/{previewScore.wickets}</strong></div> : <div className="current-batters"><span>BATTERS</span><strong>{previewLineup.find(({ id }) => id === previewEnds.strikerId)?.name}* <b>{previewStriker.runs}</b> <small>({previewStriker.ballsFaced})</small></strong><strong>{previewLineup.find(({ id }) => id === previewEnds.nonStrikerId)?.name} <b>{previewNonStriker.runs}</b> <small>({previewNonStriker.ballsFaced})</small></strong></div>}
                 <div className="run-rate"><span>LEGAL BALLS</span><strong>{previewScore.legalBalls}</strong></div>
               </div>
-              <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
-                <span>RECENT BALLS</span>{previewDeliveries.slice(-8).length ? previewDeliveries.slice(-8).map((delivery, index) => <b className={delivery.extrasType ? 'ball-extra' : delivery.runsOffBat === 4 || delivery.runsOffBat === 6 ? 'ball-boundary' : delivery.runsOffBat === 0 ? 'ball-dot' : undefined} key={`${previewDeliveries.length}-${index}`}>{delivery.extrasType === 'WIDE' ? 'WD' : delivery.extrasType === 'NO_BALL' ? 'NB' : delivery.runsOffBat || '·'}</b>) : <small>No deliveries yet</small>}
+              <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.isWicket ? 'wicket' : delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
+                <span>RECENT BALLS</span>{previewDeliveries.slice(-8).length ? previewDeliveries.slice(-8).map((delivery, index) => <b className={delivery.isWicket ? 'ball-wicket' : delivery.extrasType ? 'ball-extra' : delivery.runsOffBat === 4 || delivery.runsOffBat === 6 ? 'ball-boundary' : delivery.runsOffBat === 0 ? 'ball-dot' : undefined} key={`${previewDeliveries.length}-${index}`}>{delivery.isWicket ? 'W' : delivery.extrasType === 'WIDE' ? 'WD' : delivery.extrasType === 'NO_BALL' ? 'NB' : delivery.runsOffBat || '·'}</b>) : <small>No deliveries yet</small>}
               </div>
               <div className="scoring-preview" aria-label="Sample scoring controls">
                 <span>ADD DELIVERY</span>
-                <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
-                  <button className="score-key score-key-extra" type="button" onClick={() => recordPreviewExtra('WIDE')}>WD</button>
-                  <button className="score-key score-key-extra" type="button" onClick={() => recordPreviewExtra('NO_BALL')}>NB</button>
+                <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
+                  <button className="score-key score-key-extra" type="button" disabled={previewInningsOver} onClick={() => recordPreviewExtra('WIDE')}>WD</button>
+                  <button className="score-key score-key-extra" type="button" disabled={previewInningsOver} onClick={() => recordPreviewExtra('NO_BALL')}>NB</button>
+                  <button className="score-key score-key-extra" type="button" disabled={!previewCanRecordWicket} onClick={recordPreviewWicket}>Wicket</button>
                   <button className="score-key score-key-undo" type="button" disabled={!previewDeliveries.length} onClick={() => setPreviewDeliveries((current) => undoLastDelivery(current))}>Undo last</button>
                 </div>
-                <small>Preview only · score resets when the page reloads.</small>
+                <small>{previewInningsOver ? 'Sample innings complete' : 'Preview only · score resets when the page reloads.'}</small>
               </div>
             </article>
 

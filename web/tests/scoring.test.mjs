@@ -134,5 +134,21 @@ test('rotates the strike on odd completed runs and at the end of a legal over', 
   assert.deepEqual(advanceBattingEnds(ends, delivery({ completedRuns: 1 }), 5, 6), ends)
   assert.deepEqual(getBattingEndsAfter([delivery({ completedRuns: 1 }), delivery({ strikerId: 'batter-2' })], ends, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
   assert.throws(() => advanceBattingEnds(ends, delivery({ strikerId: 'batter-2' }), 0, 6), /striker end/)
-  assert.throws(() => advanceBattingEnds(ends, delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED' }), 0, 6), /replacement batter/)
+})
+
+test('replaces a dismissed striker from the batting lineup and keeps history undoable', () => {
+  const ends = { strikerId: 'batter-1', nonStrikerId: 'batter-2' }
+  const wicket = delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED', incomingBatterId: 'batter-3' })
+  assert.deepEqual(advanceBattingEnds(ends, wicket, 0, 6), { strikerId: 'batter-3', nonStrikerId: 'batter-2' })
+  assert.deepEqual(getBattingEndsAfter([wicket], ends, 6), { strikerId: 'batter-3', nonStrikerId: 'batter-2' })
+  assert.equal(summarizeBattingScorecard([wicket], ['batter-1', 'batter-2', 'batter-3'])[0].dismissed, true)
+  assert.throws(() => summarizeBattingScorecard([wicket], ['batter-1', 'batter-2']), /incoming batter/)
+  assert.deepEqual(undoLastDelivery([wicket]), [])
+})
+
+test('ends the innings on a wicket without a replacement batter', () => {
+  const ends = { strikerId: 'batter-1', nonStrikerId: 'batter-2' }
+  const finalWicket = delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED' })
+  assert.deepEqual(getBattingEndsAfter([finalWicket], ends, 6), { strikerId: '', nonStrikerId: '' })
+  assert.equal(summarizeInnings([finalWicket], 6).wickets, 1)
 })

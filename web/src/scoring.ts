@@ -7,6 +7,7 @@ export type DeliveryEvent = {
   completedRuns: number
   dismissedBatterId?: string
   dismissalType?: DismissalType
+  incomingBatterId?: string
   runsOffBat: number
   extrasType?: ExtrasType
   extrasRuns: number
@@ -66,6 +67,7 @@ function validateDelivery(delivery: DeliveryEvent) {
   if (typeof delivery.bowlerId !== 'string' || !delivery.bowlerId.trim()) throw new Error('A bowler ID is required for each delivery.')
   if (!Number.isInteger(delivery.completedRuns) || delivery.completedRuns < 0) throw new Error('Completed runs must be a non-negative integer.')
   if (delivery.dismissedBatterId !== undefined && (typeof delivery.dismissedBatterId !== 'string' || !delivery.dismissedBatterId.trim())) throw new Error('A dismissed batter ID must be a non-empty string.')
+  if (delivery.incomingBatterId !== undefined && (typeof delivery.incomingBatterId !== 'string' || !delivery.incomingBatterId.trim())) throw new Error('An incoming batter ID must be a non-empty string.')
   if (delivery.dismissalType && !['BOWLED', 'CAUGHT', 'LBW', 'RUN_OUT', 'STUMPED', 'HIT_WICKET', 'RETIRED_OUT'].includes(delivery.dismissalType)) throw new Error('Unknown dismissal type.')
   if (delivery.isWicket !== Boolean(delivery.dismissedBatterId) || delivery.isWicket !== Boolean(delivery.dismissalType)) throw new Error('Wicket deliveries must identify the dismissed batter and dismissal type.')
   if (!Number.isInteger(delivery.runsOffBat) || delivery.runsOffBat < 0) throw new Error('Runs off the bat must be a non-negative integer.')
@@ -88,13 +90,17 @@ export function advanceBattingEnds(
   if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
   if (!Number.isInteger(legalBallsInOverBefore) || legalBallsInOverBefore < 0 || legalBallsInOverBefore >= ballsPerOver) throw new Error('Legal balls in the current over are out of range.')
   if (delivery.strikerId !== ends.strikerId) throw new Error('The delivery striker must be at the striker end.')
-  if (delivery.isWicket) throw new Error('A replacement batter is required to advance after a wicket.')
+  if (delivery.isWicket && (delivery.dismissedBatterId !== ends.strikerId || delivery.completedRuns !== 0 || delivery.runsOffBat !== 0)) throw new Error('A wicket in the preview must dismiss the striker without completed runs.')
+  if (delivery.isWicket && !delivery.incomingBatterId) return { strikerId: '', nonStrikerId: '' }
 
   const oddCompletedRuns = delivery.completedRuns % 2 === 1
   const overCompleted = delivery.legalBall && legalBallsInOverBefore + 1 === ballsPerOver
-  return oddCompletedRuns !== overCompleted
-    ? { strikerId: ends.nonStrikerId, nonStrikerId: ends.strikerId }
+  const nextEnds = delivery.isWicket
+    ? { strikerId: delivery.incomingBatterId as string, nonStrikerId: ends.nonStrikerId }
     : ends
+  return oddCompletedRuns !== overCompleted
+    ? { strikerId: nextEnds.nonStrikerId, nonStrikerId: nextEnds.strikerId }
+    : nextEnds
 }
 
 export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openingEnds: BattingEnds, ballsPerOver: number): BattingEnds {
@@ -124,6 +130,7 @@ export function summarizeBattingScorecard(deliveries: readonly DeliveryEvent[], 
       if (!dismissed) throw new Error('The dismissed batter must be included in the batting lineup.')
       dismissed.dismissed = true
     }
+    if (delivery.incomingBatterId && !batters.has(delivery.incomingBatterId)) throw new Error('The incoming batter must be included in the batting lineup.')
   })
 
   return [...batters.values()].map((batter) => ({
