@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react'
 import { isFirebaseConfigured } from './firebase'
 import { getPublicLiveMatchSummary, getPublicTournamentScoreSettings } from './tournaments'
-import type { PublicLiveMatchSummary } from './scoring'
+import { formatDeliveryLabel, type PublicLiveMatchSummary } from './scoring'
 import './App.css'
 import './PublicMatchPage.css'
-
-function ballLabel(ball: PublicLiveMatchSummary['snapshot']['recentBalls'][number]) {
-  if (ball.isWicket) return 'W'
-  if (ball.extrasType === 'WIDE') return 'WD'
-  if (ball.extrasType === 'NO_BALL') return 'NB'
-  if (ball.extrasType === 'BYE') return `${ball.completedRuns + ball.extrasRuns}B`
-  if (ball.extrasType === 'LEG_BYE') return `${ball.completedRuns + ball.extrasRuns}LB`
-  return String(ball.runsOffBat + (ball.extrasType === 'PENALTY' ? ball.extrasRuns : 0))
-}
 
 export default function PublicMatchPage({ tournamentId, fixtureId }: { tournamentId: string; fixtureId: string }) {
   const [match, setMatch] = useState<PublicLiveMatchSummary | null>(null)
@@ -54,7 +45,7 @@ export default function PublicMatchPage({ tournamentId, fixtureId }: { tournamen
           </div>
           <section className="public-recent-balls" aria-label="Recent deliveries">
             <h2>Recent balls <span>Innings {match.snapshot.currentInnings}</span></h2>
-            {match.snapshot.recentBalls.length ? <ol>{match.snapshot.recentBalls.map((ball, index) => <li key={`${index}-${ball.strikerId}`} className={ball.isWicket ? 'public-ball-wicket' : ball.extrasType ? 'public-ball-extra' : ''}>{ballLabel(ball)}</li>)}</ol> : <p>No deliveries have been recorded.</p>}
+            {match.snapshot.recentBalls.length ? <ol>{match.snapshot.recentBalls.map((ball, index) => <li key={`${index}-${ball.strikerId}`} className={ball.isWicket ? 'public-ball-wicket' : ball.extrasType ? 'public-ball-extra' : ''}>{formatDeliveryLabel(ball)}</li>)}</ol> : <p>No deliveries have been recorded.</p>}
           </section>
           <p className="public-match-note">Refresh to check for the latest score. Full batting and bowling cards are not published yet.</p>
         </>}

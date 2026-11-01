@@ -75,6 +75,15 @@ export type PublicLiveMatchSummary = {
   snapshot: LiveMatchSnapshot
 }
 
+export function formatDeliveryLabel(delivery: DeliveryEvent): string {
+  if (delivery.isWicket) return 'W'
+  if (delivery.extrasType === 'WIDE') return delivery.completedRuns ? `WD+${delivery.completedRuns}` : 'WD'
+  if (delivery.extrasType === 'NO_BALL') return delivery.runsOffBat ? `NB+${delivery.runsOffBat}` : 'NB'
+  if (delivery.extrasType === 'BYE') return `${delivery.completedRuns + delivery.extrasRuns}B`
+  if (delivery.extrasType === 'LEG_BYE') return `${delivery.completedRuns + delivery.extrasRuns}LB`
+  return String(delivery.runsOffBat + (delivery.extrasType === 'PENALTY' ? delivery.extrasRuns : 0))
+}
+
 export function parsePublicLiveMatchSummary(value: unknown, tournamentId: string, fixtureId: string, ballsPerOver: number): PublicLiveMatchSummary {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Saved live match data is invalid.')
   const match = value as Record<string, unknown>

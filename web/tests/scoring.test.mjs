@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, formatDeliveryLabel, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -62,6 +62,13 @@ test('records wide penalties and completed runs for totals and strike rotation',
   assert.deepEqual(advanceBattingEnds(ends, wide, 0, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
   assert.deepEqual(advanceBattingEnds(ends, makeWideDelivery('batter-1', 'bowler-1', 5, 0), 0, 6), ends)
   assert.throws(() => makeWideDelivery('batter-1', 'bowler-1', 1, 1), /valid wide/)
+})
+
+test('formats recent wide and no-ball outcomes without hiding batter runs', () => {
+  assert.equal(formatDeliveryLabel(makeWideDelivery('batter-1', 'bowler-1', 2, 1)), 'WD+1')
+  assert.equal(formatDeliveryLabel(makeWideDelivery('batter-1', 'bowler-1', 1, 0)), 'WD')
+  assert.equal(formatDeliveryLabel(makeNoBallDelivery('batter-1', 'bowler-1', 4)), 'NB+4')
+  assert.equal(formatDeliveryLabel(makeNoBallDelivery('batter-1', 'bowler-1', 0)), 'NB')
 })
 
 test('undo removes only the most recent delivery', () => {
