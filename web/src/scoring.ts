@@ -202,6 +202,7 @@ export function makeWideDelivery(strikerId: string, bowlerId: string, extrasRuns
 }
 
 export function makeWicketDelivery(strikerId: string, bowlerId: string, dismissalType: DismissalType, incomingBatterId?: string): DeliveryEvent {
+  if (incomingBatterId === strikerId) throw new Error('The incoming batter must differ from the dismissed batter.')
   const delivery: DeliveryEvent = {
     strikerId,
     bowlerId,
@@ -230,6 +231,7 @@ export function advanceBattingEnds(
   if (!Number.isInteger(legalBallsInOverBefore) || legalBallsInOverBefore < 0 || legalBallsInOverBefore >= ballsPerOver) throw new Error('Legal balls in the current over are out of range.')
   if (delivery.strikerId !== ends.strikerId) throw new Error('The delivery striker must be at the striker end.')
   if (delivery.isWicket && (delivery.dismissedBatterId !== ends.strikerId || delivery.completedRuns !== 0 || delivery.runsOffBat !== 0)) throw new Error('A wicket in the preview must dismiss the striker without completed runs.')
+  if (delivery.isWicket && delivery.incomingBatterId && delivery.incomingBatterId === ends.nonStrikerId) throw new Error('The incoming batter must not already be at the crease.')
   if (delivery.isWicket && !delivery.incomingBatterId) return { strikerId: '', nonStrikerId: '' }
 
   const oddCompletedRuns = delivery.completedRuns % 2 === 1

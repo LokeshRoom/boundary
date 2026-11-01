@@ -84,6 +84,7 @@ test('creates legal wicket deliveries with the selected dismissal type', () => {
   assert.equal(wicket.incomingBatterId, 'batter-3')
   assert.equal(wicket.legalBall, true)
   assert.equal(makeWicketDelivery('batter-1', 'bowler-1', 'LBW').incomingBatterId, undefined)
+  assert.throws(() => makeWicketDelivery('batter-1', 'bowler-1', 'CAUGHT', 'batter-1'), /differ from the dismissed/)
 })
 
 test('undo removes only the most recent delivery', () => {
@@ -232,6 +233,7 @@ test('replaces a dismissed striker from the batting lineup and keeps history und
   assert.deepEqual(getBattingEndsAfter([wicket], ends, 6), { strikerId: 'batter-3', nonStrikerId: 'batter-2' })
   assert.equal(summarizeBattingScorecard([wicket], ['batter-1', 'batter-2', 'batter-3'])[0].dismissed, true)
   assert.throws(() => summarizeBattingScorecard([wicket], ['batter-1', 'batter-2']), /incoming batter/)
+  assert.throws(() => advanceBattingEnds(ends, { ...wicket, incomingBatterId: 'batter-2' }, 0, 6), /already be at the crease/)
   assert.deepEqual(undoLastDelivery([wicket]), [])
 })
 

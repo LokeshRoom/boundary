@@ -42,6 +42,7 @@
 - [x] Record common wide penalties and completed runs for correct totals and strike rotation.
 - [x] Reject wide outcomes beyond the supported completed-run range.
 - [x] Record the selected dismissal type for striker wickets.
+- [x] Reject wicket replacements who are already at the crease.
 - [x] Show batter runs alongside wide and no-ball markers in the public recent-ball feed.
 - [x] Show the total and category breakdown of extras on the public scoreboard.
 - [x] Add a local-only scoring preview with run, wide, no-ball, wicket and replacement batter, recent-ball, undo, and batter-strike rotation controls.
