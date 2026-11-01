@@ -26,3 +26,7 @@ The Firestore rules allow public reads, require an authenticated owner for write
 `tournaments/{tournamentId}/teams/{teamId}` is public and contains only `name`, `shortName`, `status: APPROVED`, and timestamps. Player records live at `teams/{teamId}/players/{playerId}` and contain only name, jersey number, and role. Only the tournament owner can create or change approved teams and players.
 
 Captain names and contact details live in `tournaments/{tournamentId}/privateRegistrations/{teamId}`. Only the tournament owner can read or write these records, and the rule requires a corresponding public team. The organizer client creates the public team and private captain record in one batch; `existsAfter` lets the private write verify the team created by that same batch. Pending public submissions are not enabled yet; they need a separate bounded submission path and approval flow. Firestore does not filter fields from a readable document, so contact details must never be stored beside public team or player data.
+
+## Knockout fixture document
+
+`tournaments/{tournamentId}/fixtures/knockout` stores the generated rounds, team entries, and winner-of-match placeholders. It is public-readable and organizer-created; create-only client behavior prevents a second generation from silently replacing the first bracket. Replacing or editing a saved bracket needs an explicit organizer workflow.

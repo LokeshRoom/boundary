@@ -149,6 +149,7 @@ h1, h2, p { margin-top: 0; }
 .bracket-round h3 { margin: 0; color: #69766c; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .bracket-match { display: grid; gap: 4px; padding: 9px; border: 1px solid #e2e9e0; border-radius: 6px; font-size: 11px; }
 .bracket-match small { color: #728176; font-size: 9px; }
+.bracket-save { display: grid; justify-items: start; gap: 7px; margin-top: 8px; }
 
 @media (max-width: 1000px) {
   .sidebar { width: 205px; }

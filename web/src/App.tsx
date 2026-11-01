@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'rea
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateKnockoutRounds, type FixtureEntrant } from './fixtures'
 import { addPlayer, createTeam, listPlayers, listTeams, type NewPlayer, type NewTeam, type Player, type PlayerRole, type Team } from './teams'
-import { listOwnedTournaments, saveTournament, type Format, type Status, type Tournament } from './tournaments'
+import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
@@ -149,6 +149,9 @@ function TeamDialog({
   const [players, setPlayers] = useState<Player[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
   const [bracketTournamentId, setBracketTournamentId] = useState<string | null>(null)
+  const [savingBracket, setSavingBracket] = useState(false)
+  const [bracketMessage, setBracketMessage] = useState('')
+  const [bracketMessageTournamentId, setBracketMessageTournamentId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const loading = Boolean(tournament?.id && teamsTournamentId !== tournament.id)
@@ -238,6 +241,21 @@ function TeamDialog({
     return entrant.type === 'team' ? entrant.team.name : `Winner of match ${entrant.matchNumber}`
   }
 
+  async function saveBracket() {
+    if (!tournament?.id || !canManage || knockoutRounds.length === 0) return
+    setSavingBracket(true)
+    setBracketMessage('')
+    try {
+      await saveKnockoutFixtures(tournament.id, knockoutRounds)
+      setBracketMessage('Bracket saved. A saved bracket cannot be replaced yet.')
+    } catch {
+      setBracketMessage('Could not save the bracket. It may already exist, or Firestore rules may need an update.')
+    } finally {
+      setBracketMessageTournamentId(tournament.id)
+      setSavingBracket(false)
+    }
+  }
+
   const showBracket = bracketTournamentId === tournament?.id
   const knockoutRounds = showBracket && !loading && tournament?.format === 'Knockout' && teams.length >= 2
     ? generateKnockoutRounds(teams)
@@ -265,6 +283,10 @@ function TeamDialog({
                 {match.bye ? <small>Bye - advances</small> : <span>{match.teamB ? entrantLabel(match.teamB) : ''}</span>}
               </div>)}
             </div>)}
+            </div>
+            <div className="bracket-save">
+              <button className="button button-primary" type="button" disabled={savingBracket} onClick={saveBracket}>{savingBracket ? 'Saving...' : 'Save bracket'} <Icon name="arrow" size={16} /></button>
+              {bracketMessageTournamentId === tournament.id && bracketMessage && <p className="form-note" role="status">{bracketMessage}</p>}
             </div>
           </section>}
           {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">

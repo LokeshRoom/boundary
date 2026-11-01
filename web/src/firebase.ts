@@ -31,6 +31,6 @@ export async function getFirebaseAuth() {
 
 export async function getFirebaseFirestore() {
   const [app, firestoreSdk] = await Promise.all([getFirebaseApp(), import('firebase/firestore')])
-  const { addDoc, collection, doc, getDocs, getFirestore, query, serverTimestamp, where, writeBatch } = firestoreSdk
-  return { firestore: getFirestore(app), addDoc, collection, doc, getDocs, query, serverTimestamp, where, writeBatch }
+  const { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, runTransaction, serverTimestamp, where, writeBatch } = firestoreSdk
+  return { firestore: getFirestore(app), addDoc, collection, doc, getDoc, getDocs, getFirestore, query, runTransaction, serverTimestamp, where, writeBatch }
 }

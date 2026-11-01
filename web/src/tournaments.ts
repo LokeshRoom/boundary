@@ -1,4 +1,5 @@
 import { getFirebaseFirestore } from './firebase'
+import type { KnockoutRound } from './fixtures'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Upcoming' | 'Live' | 'Completed'
@@ -77,5 +78,22 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       endDate: data.endDate,
       venue: data.venue,
     }
+  })
+}
+
+export async function saveKnockoutFixtures(tournamentId: string, rounds: KnockoutRound[]) {
+  const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
+  const fixtureRef = doc(firestore, 'tournaments', tournamentId, 'fixtures', 'knockout')
+
+  await runTransaction(firestore, async (transaction) => {
+    const currentFixtures = await transaction.get(fixtureRef)
+    if (currentFixtures.exists()) throw new Error('Fixtures already exist for this tournament.')
+
+    transaction.set(fixtureRef, {
+      format: 'KNOCKOUT',
+      rounds,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
   })
 }

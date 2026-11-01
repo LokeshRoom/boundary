@@ -79,6 +79,17 @@ service cloud.firestore {
         && data.role in ['BATTER', 'BOWLER', 'ALL_ROUNDER', 'WICKETKEEPER'];
     }
 
+    function validFixture(data) {
+      return data.keys().hasAll(['format', 'rounds', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['format', 'rounds', 'createdAt', 'updatedAt'])
+        && data.format == 'KNOCKOUT'
+        && data.rounds is list
+        && data.rounds.size() > 0
+        && data.rounds.size() <= 7
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function validPrivateRegistration(data) {
       return data.keys().hasAll(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
@@ -135,6 +146,21 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time;
         allow update: if ownsTournament(tournamentId)
           && validPrivateRegistration(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(tournamentId);
+      }
+
+      match /fixtures/{fixtureId} {
+        allow read: if true;
+        allow create: if fixtureId == 'knockout'
+          && ownsTournament(tournamentId)
+          && validFixture(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if fixtureId == 'knockout'
+          && ownsTournament(tournamentId)
+          && validFixture(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time;
         allow delete: if ownsTournament(tournamentId);
