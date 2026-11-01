@@ -55,6 +55,12 @@ export type InningsScorecard = {
   bowling: BowlerSummary[]
 }
 
+export type LiveMatchSnapshot = {
+  currentInnings: 1 | 2
+  scoreSummary: InningsSummary
+  recentBalls: DeliveryEvent[]
+}
+
 export type BattingEnds = {
   strikerId: string
   nonStrikerId: string
@@ -171,6 +177,19 @@ export function buildInningsScorecard(
     summary: summarizeInnings(deliveries, ballsPerOver),
     batting: summarizeBattingScorecard(deliveries, batterIds),
     bowling: summarizeBowlingScorecard(deliveries, bowlerIds, ballsPerOver),
+  }
+}
+
+export function buildLiveMatchSnapshot(
+  deliveries: readonly DeliveryEvent[],
+  ballsPerOver: number,
+  currentInnings: 1 | 2 = 1,
+): LiveMatchSnapshot {
+  if (currentInnings !== 1 && currentInnings !== 2) throw new Error('Current innings must be 1 or 2.')
+  return {
+    currentInnings,
+    scoreSummary: summarizeInnings(deliveries, ballsPerOver),
+    recentBalls: deliveries.slice(-18),
   }
 }
 

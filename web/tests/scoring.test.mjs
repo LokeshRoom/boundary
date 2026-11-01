@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -109,6 +109,18 @@ test('composes an innings total with batting and bowling figures', () => {
   assert.equal(scorecard.summary.runs, 5)
   assert.equal(scorecard.batting.reduce((total, batter) => total + batter.runs, 0), 5)
   assert.equal(scorecard.bowling[0].runsConceded, 5)
+})
+
+test('builds a compact live snapshot with current totals and only the latest 18 deliveries', () => {
+  const deliveries = Array.from({ length: 20 }, (_, index) => delivery({ runsOffBat: index % 2, completedRuns: index % 2 }))
+  const snapshot = buildLiveMatchSnapshot(deliveries, 6, 2)
+
+  assert.equal(snapshot.currentInnings, 2)
+  assert.deepEqual(snapshot.scoreSummary, summarizeInnings(deliveries, 6))
+  assert.equal(snapshot.recentBalls.length, 18)
+  assert.equal(snapshot.recentBalls[0], deliveries[2])
+  assert.equal(snapshot.recentBalls.at(-1), deliveries.at(-1))
+  assert.throws(() => buildLiveMatchSnapshot([], 6, 3), /must be 1 or 2/)
 })
 
 test('ends an innings at the legal-ball limit or when all but one batter are out', () => {
