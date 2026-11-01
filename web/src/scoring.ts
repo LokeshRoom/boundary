@@ -251,7 +251,8 @@ export function advanceBattingEnds(
     : nextEnds
 }
 
-export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openingEnds: BattingEnds, ballsPerOver: number): BattingEnds {
+export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openingEnds: BattingEnds, battingPlayers: number, ballsPerOver: number): BattingEnds {
+  if (!Number.isInteger(battingPlayers) || battingPlayers < 2) throw new Error('A batting lineup must have at least two players.')
   validateBattingEnds(openingEnds, ballsPerOver)
   let ends = openingEnds
   let legalBallsInOver = 0
@@ -259,6 +260,9 @@ export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openin
   deliveries.forEach((delivery) => {
     if (delivery.isWicket && delivery.dismissedBatterId && dismissedBatterIds.has(delivery.dismissedBatterId)) throw new Error('A batter cannot be dismissed more than once.')
     if (delivery.isWicket && delivery.incomingBatterId && dismissedBatterIds.has(delivery.incomingBatterId)) throw new Error('An already dismissed batter cannot return to the crease.')
+    const wicketsAfterDelivery = dismissedBatterIds.size + Number(Boolean(delivery.dismissedBatterId))
+    if (delivery.isWicket && !delivery.incomingBatterId && wicketsAfterDelivery < battingPlayers - 1) throw new Error('An incoming batter is required before the innings is all out.')
+    if (delivery.isWicket && delivery.incomingBatterId && wicketsAfterDelivery >= battingPlayers - 1) throw new Error('The innings is all out and no incoming batter remains.')
     ends = advanceBattingEnds(ends, delivery, legalBallsInOver, ballsPerOver)
     if (delivery.dismissedBatterId) dismissedBatterIds.add(delivery.dismissedBatterId)
     legalBallsInOver = delivery.legalBall ? (legalBallsInOver + 1) % ballsPerOver : legalBallsInOver

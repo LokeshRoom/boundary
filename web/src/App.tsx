@@ -786,7 +786,7 @@ function App() {
     { id: 'preview-batter-c', name: 'S. Khan' },
     { id: 'preview-batter-d', name: 'A. Reed' },
   ]
-  const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, previewBallsPerOver)
+  const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, previewLineup.length, previewBallsPerOver)
   const previewBatters = summarizeBattingScorecard(previewDeliveries, previewLineup.map(({ id }) => id))
   const previewBowlers = summarizeBowlingScorecard(previewDeliveries, ['preview-bowler'], previewBallsPerOver)
   const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
