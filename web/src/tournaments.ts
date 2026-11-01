@@ -127,6 +127,16 @@ export async function saveKnockoutFixtures(tournamentId: string, rounds: Knockou
   })
 }
 
+export async function getKnockoutFixtures(tournamentId: string): Promise<KnockoutRound[] | null> {
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'tournaments', tournamentId, 'fixtures', 'knockout'))
+  if (!snapshot.exists()) return null
+
+  const fixture = snapshot.data()
+  if (fixture.format !== 'KNOCKOUT' || !Array.isArray(fixture.rounds)) throw new Error('Saved knockout fixtures have an invalid format.')
+  return fixture.rounds as KnockoutRound[]
+}
+
 export async function saveRoundRobinFixtures(tournamentId: string, rounds: RoundRobinRound[]) {
   const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
   const fixtureRef = doc(firestore, 'tournaments', tournamentId, 'fixtures', 'league')

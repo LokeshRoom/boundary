@@ -24,6 +24,7 @@
 - [x] Add organizer roster entry for player name, jersey number, and role.
 - [x] Preview knockout rounds with automatic byes and winner placeholders.
 - [x] Persist the generated knockout bracket as a public, organizer-created fixture document.
+- [x] Load the saved knockout bracket when reopening its preview.
 - [x] Preview a single round-robin schedule for league tournaments.
 - [x] Persist a generated round-robin schedule as a public fixture document.
 - [x] Load saved league schedules when the organizer opens the schedule preview.
