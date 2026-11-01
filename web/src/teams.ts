@@ -24,6 +24,14 @@ export type Player = {
 
 export type NewPlayer = Omit<Player, 'id'>
 
+export type TeamRegistration = {
+  teamName: string
+  shortName: string
+  captainName: string
+  captainContact: string
+  players: NewPlayer[]
+}
+
 export async function listTeams(tournamentId: string): Promise<Team[]> {
   const { firestore, collection, getDocs } = await getFirebaseFirestore()
   const result = await getDocs(collection(firestore, 'tournaments', tournamentId, 'teams'))
@@ -69,4 +77,21 @@ export async function addPlayer(tournamentId: string, teamId: string, player: Ne
   const { firestore, addDoc, collection } = await getFirebaseFirestore()
   const result = await addDoc(collection(firestore, 'tournaments', tournamentId, 'teams', teamId, 'players'), player)
   return { id: result.id, ...player }
+}
+
+export async function submitTeamRegistration(tournamentId: string, uid: string, registration: TeamRegistration) {
+  const { firestore, collection, doc, serverTimestamp, writeBatch } = await getFirebaseFirestore()
+  const registrationRef = doc(firestore, 'tournaments', tournamentId, 'pendingRegistrations', uid)
+  const batch = writeBatch(firestore)
+  batch.set(registrationRef, {
+    teamName: registration.teamName,
+    shortName: registration.shortName,
+    captainName: registration.captainName,
+    captainContact: registration.captainContact,
+    submittedAt: serverTimestamp(),
+  })
+  for (const player of registration.players) {
+    batch.set(doc(collection(registrationRef, 'players')), player)
+  }
+  await batch.commit()
 }

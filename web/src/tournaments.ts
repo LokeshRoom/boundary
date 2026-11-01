@@ -19,6 +19,13 @@ export type Tournament = {
   venue?: string
 }
 
+export type RegistrationTournament = {
+  name: string
+  venue: string
+  startDate: string
+  isOpen: boolean
+}
+
 const firestoreFormats = {
   Knockout: 'KNOCKOUT',
   League: 'LEAGUE',
@@ -80,6 +87,20 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       venue: data.venue,
     }
   })
+}
+
+export async function getRegistrationTournament(tournamentId: string): Promise<RegistrationTournament | null> {
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'tournaments', tournamentId))
+  if (!snapshot.exists()) return null
+
+  const data = snapshot.data()
+  return {
+    name: data.name,
+    venue: data.venue,
+    startDate: data.startDate,
+    isOpen: data.status === 'REGISTRATION' && data.registrationOpen === true,
+  }
 }
 
 export async function saveKnockoutFixtures(tournamentId: string, rounds: KnockoutRound[]) {

@@ -108,6 +108,34 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function registrationIsOpen(tournamentId) {
+      let tournament = get(/databases/$(database)/documents/tournaments/$(tournamentId)).data;
+      return tournament.status == 'REGISTRATION' && tournament.registrationOpen == true;
+    }
+
+    function validPendingRegistration(data) {
+      return data.keys().hasAll([
+          'teamName', 'shortName', 'captainName', 'captainContact', 'submittedAt'
+        ])
+        && data.keys().hasOnly([
+          'teamName', 'shortName', 'captainName', 'captainContact', 'submittedAt'
+        ])
+        && data.teamName is string
+        && data.teamName.size() > 0
+        && data.teamName.size() <= 60
+        && data.shortName is string
+        && data.shortName.size() > 0
+        && data.shortName.size() <= 5
+        && data.captainName is string
+        && data.captainName.size() > 0
+        && data.captainName.size() <= 80
+        && data.captainContact is string
+        && data.captainContact.size() >= 5
+        && data.captainContact.size() <= 120
+        && data.submittedAt is timestamp
+        && data.submittedAt == request.time;
+    }
+
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if request.auth != null
@@ -154,6 +182,23 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time;
         allow delete: if ownsTournament(tournamentId);
+      }
+
+      match /pendingRegistrations/{registrationId} {
+        allow create: if request.auth != null
+          && registrationId == request.auth.uid
+          && registrationIsOpen(tournamentId)
+          && validPendingRegistration(request.resource.data);
+        allow read, update, delete: if ownsTournament(tournamentId);
+
+        match /players/{playerId} {
+          allow create: if request.auth != null
+            && registrationId == request.auth.uid
+            && registrationIsOpen(tournamentId)
+            && existsAfter(/databases/$(database)/documents/tournaments/$(tournamentId)/pendingRegistrations/$(registrationId))
+            && validPlayer(request.resource.data);
+          allow read, update, delete: if ownsTournament(tournamentId);
+        }
       }
 
       match /fixtures/{fixtureId} {

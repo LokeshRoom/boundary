@@ -16,7 +16,8 @@
 - [x] Persist approved team counts atomically and restore them when tournaments load.
 - [x] Build organizer authentication and persistent tournament setup.
 - [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
-- [ ] Add public team registration and organizer approval workflow.
+- [x] Accept private public team registration submissions with player rosters on open tournaments.
+- [ ] Add organizer review, approval/rejection, and registration open/close controls.
 - [x] Add organizer roster entry for player name, jersey number, and role.
 - [x] Preview knockout rounds with automatic byes and winner placeholders.
 - [x] Persist the generated knockout bracket as a public, organizer-created fixture document.

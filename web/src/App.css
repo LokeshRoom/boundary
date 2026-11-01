@@ -143,6 +143,9 @@ h1, h2, p { margin-top: 0; }
 .roster-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .roster-heading h3 { margin: 0; color: #233c2d; font-family: 'Barlow Condensed', sans-serif; font-size: 19px; }
 .player-list { max-height: 135px; overflow-y: auto; }
+.registration-link-box { display: grid; gap: 6px; }
+.registration-link-row { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.registration-link-row input { min-width: 0; }
 .bracket-toggle { justify-self: start; padding: 0; font-size: 11px; }
 .bracket-preview { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 10px; }
 .bracket-round { display: grid; min-width: 145px; align-content: start; gap: 8px; }

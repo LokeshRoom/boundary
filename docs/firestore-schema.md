@@ -26,7 +26,13 @@ The Firestore rules allow public reads, require an authenticated owner for write
 
 `tournaments/{tournamentId}/teams/{teamId}` is public and contains only `name`, `shortName`, `status: APPROVED`, and timestamps. Player records live at `teams/{teamId}/players/{playerId}` and contain only name, jersey number, and role. Only the tournament owner can create or change approved teams and players.
 
-Captain names and contact details live in `tournaments/{tournamentId}/privateRegistrations/{teamId}`. Only the tournament owner can read or write these records, and the rule requires a corresponding public team. The organizer client creates the public team and private captain record in one batch; `existsAfter` lets the private write verify the team created by that same batch. Pending public submissions are not enabled yet; they need a separate bounded submission path and approval flow. Firestore does not filter fields from a readable document, so contact details must never be stored beside public team or player data.
+Captain names and contact details live in `tournaments/{tournamentId}/privateRegistrations/{teamId}`. Only the tournament owner can read or write these records, and the rule requires a corresponding public team. The organizer client creates the public team and private captain record in one batch; `existsAfter` lets the private write verify the team created by that same batch. Firestore does not filter fields from a readable document, so contact details must never be stored beside public team or player data.
+
+## Pending public registration
+
+An invitee signs in anonymously and creates `tournaments/{tournamentId}/pendingRegistrations/{uid}` plus player documents under its `players` subcollection in one batch. Each auth UID can submit only once per tournament. The rules accept these writes only while tournament status is `REGISTRATION` and `registrationOpen` is true; only the tournament owner can read pending team, contact, and player data. Public submissions do not appear in approved teams until the organizer approval flow is implemented. Enable Anonymous as a Firebase Authentication provider before using the public form.
+
+Public registration also requires a reCAPTCHA v3 App Check site key in `VITE_FIREBASE_APP_CHECK_SITE_KEY`. Register the web app with Firebase App Check and enable enforcement for Authentication and Cloud Firestore in the Firebase console; setting the client key alone does not enable server-side enforcement.
 
 ## Knockout fixture document
 

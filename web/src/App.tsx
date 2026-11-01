@@ -154,6 +154,7 @@ function TeamDialog({
   const [bracketMessageTournamentId, setBracketMessageTournamentId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [linkCopyMessage, setLinkCopyMessage] = useState('')
   const loading = Boolean(tournament?.id && teamsTournamentId !== tournament.id)
 
   useEffect(() => {
@@ -215,6 +216,18 @@ function TeamDialog({
     }).finally(() => setPlayersLoading(false))
   }
 
+  function copyRegistrationLink() {
+    if (!tournament?.id) return
+    const link = `${window.location.origin}/t/${tournament.id}/register`
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(link).then(() => setLinkCopyMessage('Registration link copied.')).catch(() => setLinkCopyMessage('Copy the link from the field.'))
+      return
+    }
+    const input = document.getElementById('registration-link') as HTMLInputElement | null
+    input?.select()
+    setLinkCopyMessage('Select and copy the link from the field.')
+  }
+
   function submitPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!tournament?.id || !activeTeam || !canManage) return
@@ -268,6 +281,11 @@ function TeamDialog({
           <div><span className="eyebrow">Tournament teams</span><h2 id="teams-title">{tournament?.name ?? 'Choose a tournament'}</h2></div>
           <button className="icon-button" type="button" aria-label="Close" onClick={() => dialogRef.current?.close()}><Icon name="close" /></button>
         </div>
+        {tournament?.id && canManage && <div className="registration-link-box">
+          <label className="field-label" htmlFor="registration-link">Public registration link</label>
+          <div className="registration-link-row"><input id="registration-link" readOnly value={`${window.location.origin}/t/${tournament.id}/register`} /><button className="roster-action" type="button" onClick={copyRegistrationLink}>Copy</button></div>
+          {linkCopyMessage && <p className="form-note" role="status">{linkCopyMessage}</p>}
+        </div>}
         {!tournament?.id || !canManage ? <p className="form-note">Save this tournament and sign in as its organizer to manage teams.</p> : <>
           <div className="team-list" aria-live="polite">
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
