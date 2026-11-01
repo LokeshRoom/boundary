@@ -32,10 +32,24 @@ export type TeamRegistration = {
   players: NewPlayer[]
 }
 
+export type PendingRegistration = {
+  id: string
+  teamName: string
+  shortName: string
+  captainName: string
+  captainContact: string
+}
+
 export async function listTeams(tournamentId: string): Promise<Team[]> {
   const { firestore, collection, getDocs } = await getFirebaseFirestore()
   const result = await getDocs(collection(firestore, 'tournaments', tournamentId, 'teams'))
   return result.docs.map((snapshot) => ({ id: snapshot.id, name: snapshot.data().name, shortName: snapshot.data().shortName }))
+}
+
+export async function listPendingRegistrations(tournamentId: string): Promise<PendingRegistration[]> {
+  const { firestore, collection, getDocs } = await getFirebaseFirestore()
+  const result = await getDocs(collection(firestore, 'tournaments', tournamentId, 'pendingRegistrations'))
+  return result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }) as PendingRegistration)
 }
 
 export async function createTeam(tournamentId: string, team: NewTeam): Promise<Team> {

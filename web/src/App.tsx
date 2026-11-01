@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateKnockoutRounds, type FixtureEntrant } from './fixtures'
-import { addPlayer, createTeam, listPlayers, listTeams, type NewPlayer, type NewTeam, type Player, type PlayerRole, type Team } from './teams'
+import { addPlayer, createTeam, listPendingRegistrations, listPlayers, listTeams, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
@@ -144,6 +144,7 @@ function TeamDialog({
   onTeamAdded: (tournamentId: string, teamCount: number) => void
 }) {
   const [teams, setTeams] = useState<Team[]>([])
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([])
   const [teamsTournamentId, setTeamsTournamentId] = useState<string | null>(null)
   const [activeTeam, setActiveTeam] = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
@@ -162,15 +163,17 @@ function TeamDialog({
 
     let active = true
     const tournamentId = tournament.id
-    void listTeams(tournamentId).then((saved) => {
+    void Promise.all([listTeams(tournamentId), listPendingRegistrations(tournamentId)]).then(([saved, pending]) => {
       if (active) {
         setTeams(saved)
+        setPendingRegistrations(pending)
         setTeamsTournamentId(tournamentId)
         setError('')
       }
     }).catch(() => {
       if (active) {
         setTeams([])
+        setPendingRegistrations([])
         setTeamsTournamentId(tournamentId)
         setError('Could not load teams. Check your Firestore rules and connection.')
       }
@@ -287,6 +290,13 @@ function TeamDialog({
           {linkCopyMessage && <p className="form-note" role="status">{linkCopyMessage}</p>}
         </div>}
         {!tournament?.id || !canManage ? <p className="form-note">Save this tournament and sign in as its organizer to manage teams.</p> : <>
+          <section className="pending-registrations" aria-labelledby="pending-registrations-title">
+            <h3 id="pending-registrations-title">Pending registrations</h3>
+            {loading ? <p className="form-note">Loading submissions...</p> : pendingRegistrations.length ? pendingRegistrations.map((registration) => <article className="pending-registration" key={registration.id}>
+              <div><strong>{registration.teamName}</strong><span>{registration.shortName}</span></div>
+              <p>{registration.captainName} · {registration.captainContact}</p>
+            </article>) : <p className="form-note">No pending registrations.</p>}
+          </section>
           <div className="team-list" aria-live="polite">
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>

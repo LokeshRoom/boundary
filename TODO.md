@@ -17,7 +17,8 @@
 - [x] Build organizer authentication and persistent tournament setup.
 - [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
 - [x] Accept private public team registration submissions with player rosters on open tournaments.
-- [ ] Add organizer review, approval/rejection, and registration open/close controls.
+- [x] Show pending public team registrations and private captain details to the organizer.
+- [ ] Approve or reject public team registrations and control whether registration is open.
 - [x] Add organizer roster entry for player name, jersey number, and role.
 - [x] Preview knockout rounds with automatic byes and winner placeholders.
 - [x] Persist the generated knockout bracket as a public, organizer-created fixture document.

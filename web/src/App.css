@@ -146,6 +146,12 @@ h1, h2, p { margin-top: 0; }
 .registration-link-box { display: grid; gap: 6px; }
 .registration-link-row { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .registration-link-row input { min-width: 0; }
+.pending-registrations { display: grid; gap: 7px; padding: 12px 0; border-top: 1px solid #edf0eb; }
+.pending-registrations h3 { margin: 0; color: #33483a; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; }
+.pending-registration { padding: 9px; border: 1px solid #e2e9e0; border-radius: 6px; background: #f8faf7; font-size: 11px; }
+.pending-registration div { display: flex; justify-content: space-between; gap: 12px; }
+.pending-registration span { color: #748076; font-weight: 700; letter-spacing: .06em; }
+.pending-registration p { margin: 5px 0 0; color: #748076; overflow-wrap: anywhere; }
 .bracket-toggle { justify-self: start; padding: 0; font-size: 11px; }
 .bracket-preview { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 10px; }
 .bracket-round { display: grid; min-width: 145px; align-content: start; gap: 8px; }
