@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
-import { generateKnockoutRounds, generateRoundRobinRounds, type FixtureEntrant } from './fixtures'
+import { generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant } from './fixtures'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
+import { listOwnedTournaments, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
@@ -153,6 +153,9 @@ function TeamDialog({
   const [playersLoading, setPlayersLoading] = useState(false)
   const [bracketTournamentId, setBracketTournamentId] = useState<string | null>(null)
   const [leagueScheduleTournamentId, setLeagueScheduleTournamentId] = useState<string | null>(null)
+  const [savingLeagueSchedule, setSavingLeagueSchedule] = useState(false)
+  const [leagueScheduleMessage, setLeagueScheduleMessage] = useState('')
+  const [leagueScheduleMessageTournamentId, setLeagueScheduleMessageTournamentId] = useState<string | null>(null)
   const [savingBracket, setSavingBracket] = useState(false)
   const [bracketMessage, setBracketMessage] = useState('')
   const [bracketMessageTournamentId, setBracketMessageTournamentId] = useState<string | null>(null)
@@ -315,12 +318,27 @@ function TeamDialog({
     }
   }
 
+  async function saveLeagueSchedule() {
+    if (!tournament?.id || !canManage || leagueRounds.length === 0) return
+    setSavingLeagueSchedule(true)
+    setLeagueScheduleMessage('')
+    try {
+      await saveRoundRobinFixtures(tournament.id, leagueRounds)
+      setLeagueScheduleMessage('Schedule saved. A saved schedule cannot be replaced yet.')
+    } catch {
+      setLeagueScheduleMessage('Could not save the schedule. It may already exist, or Firestore rules may need an update.')
+    } finally {
+      setLeagueScheduleMessageTournamentId(tournament.id)
+      setSavingLeagueSchedule(false)
+    }
+  }
+
   const showBracket = bracketTournamentId === tournament?.id
   const showLeagueSchedule = leagueScheduleTournamentId === tournament?.id
   const knockoutRounds = showBracket && !loading && tournament?.format === 'Knockout' && teams.length >= 2
     ? generateKnockoutRounds(teams)
     : []
-  const leagueRounds = showLeagueSchedule && !loading && tournament?.format === 'League' && teams.length >= 2
+  const leagueRounds = showLeagueSchedule && !loading && tournament?.format === 'League' && teams.length >= 2 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
     ? generateRoundRobinRounds(teams)
     : []
 
@@ -354,7 +372,8 @@ function TeamDialog({
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>
           {tournament?.format === 'Knockout' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2} onClick={() => setBracketTournamentId(showBracket ? null : tournament.id ?? null)}>{showBracket ? 'Hide bracket preview' : 'Preview knockout bracket'}</button>}
-          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2} onClick={() => setLeagueScheduleTournamentId(showLeagueSchedule ? null : tournament.id ?? null)}>{showLeagueSchedule ? 'Hide schedule preview' : 'Preview round-robin schedule'}</button>}
+          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2 || teams.length > ROUND_ROBIN_TEAM_LIMIT} onClick={() => setLeagueScheduleTournamentId(showLeagueSchedule ? null : tournament.id ?? null)}>{showLeagueSchedule ? 'Hide schedule preview' : 'Preview round-robin schedule'}</button>}
+          {tournament?.format === 'League' && teams.length > ROUND_ROBIN_TEAM_LIMIT && <p className="form-note">Round-robin schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p>}
           {knockoutRounds.length > 0 && <section aria-label="Knockout bracket preview">
             <p className="form-note">Preview only. Byes go to teams in the listed order.</p>
             <div className="bracket-preview">
@@ -377,6 +396,10 @@ function TeamDialog({
               <summary>{round.name}<span>{round.matches.length} fixtures</span></summary>
               <div className="league-fixtures">{round.matches.map((match, index) => <div className="league-fixture" key={`${round.name}-${index}`}><strong>{match.teamA.name}</strong><span>{match.bye ? 'Bye' : 'vs'}</span>{match.teamB && <strong>{match.teamB.name}</strong>}</div>)}</div>
             </details>)}
+            <div className="bracket-save">
+              <button className="button button-primary" type="button" disabled={savingLeagueSchedule} onClick={saveLeagueSchedule}>{savingLeagueSchedule ? 'Saving...' : 'Save schedule'} <Icon name="arrow" size={16} /></button>
+              {leagueScheduleMessageTournamentId === tournament.id && leagueScheduleMessage && <p className="form-note" role="status">{leagueScheduleMessage}</p>}
+            </div>
           </section>}
           {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">
             <div className="roster-heading"><h3 id="roster-title">{activeTeam.name} roster</h3><button className="roster-action" type="button" onClick={() => setActiveTeam(null)}>All teams</button></div>

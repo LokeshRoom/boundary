@@ -37,3 +37,7 @@ Public registration also requires a reCAPTCHA v3 App Check site key in `VITE_FIR
 ## Knockout fixture document
 
 `tournaments/{tournamentId}/fixtures/knockout` stores the generated rounds, team entries, and winner-of-match placeholders. It is public-readable and organizer-created; create-only client behavior prevents a second generation from silently replacing the first bracket. Replacing or editing a saved bracket needs an explicit organizer workflow.
+
+## Round-robin fixture document
+
+`tournaments/{tournamentId}/fixtures/league` stores a single round-robin schedule as rounds with team pairings and byes. It supports up to 64 teams so the schedule stays bounded within one Firestore document. It is public-readable and organizer-created. The client uses a transaction to prevent replacement if the fixture already exists; the saved schedule is not editable yet.

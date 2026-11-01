@@ -1,5 +1,5 @@
 import { getFirebaseFirestore } from './firebase'
-import type { KnockoutRound } from './fixtures'
+import type { KnockoutRound, RoundRobinRound } from './fixtures'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
@@ -120,6 +120,23 @@ export async function saveKnockoutFixtures(tournamentId: string, rounds: Knockou
 
     transaction.set(fixtureRef, {
       format: 'KNOCKOUT',
+      rounds,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  })
+}
+
+export async function saveRoundRobinFixtures(tournamentId: string, rounds: RoundRobinRound[]) {
+  const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
+  const fixtureRef = doc(firestore, 'tournaments', tournamentId, 'fixtures', 'league')
+
+  await runTransaction(firestore, async (transaction) => {
+    const currentFixtures = await transaction.get(fixtureRef)
+    if (currentFixtures.exists()) throw new Error('Round-robin fixtures already exist for this tournament.')
+
+    transaction.set(fixtureRef, {
+      format: 'ROUND_ROBIN',
       rounds,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

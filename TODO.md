@@ -25,7 +25,8 @@
 - [x] Preview knockout rounds with automatic byes and winner placeholders.
 - [x] Persist the generated knockout bracket as a public, organizer-created fixture document.
 - [x] Preview a single round-robin schedule for league tournaments.
-- [ ] Persist round-robin schedules and generate group-stage schedules.
+- [x] Persist a generated round-robin schedule as a public fixture document.
+- [ ] Load saved league schedules and generate group-stage schedules.
 - [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.

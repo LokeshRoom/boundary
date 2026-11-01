@@ -30,6 +30,8 @@ export type RoundRobinRound = {
   matches: RoundRobinMatch[]
 }
 
+export const ROUND_ROBIN_TEAM_LIMIT = 64
+
 function roundName(matchCount: number) {
   if (matchCount === 1) return 'Final'
   if (matchCount === 2) return 'Semi-finals'
@@ -88,6 +90,7 @@ export function generateKnockoutRounds(teams: readonly FixtureTeam[]): KnockoutR
 
 export function generateRoundRobinRounds(teams: readonly FixtureTeam[]): RoundRobinRound[] {
   if (teams.length < 2) throw new Error('A round-robin schedule needs at least two teams.')
+  if (teams.length > ROUND_ROBIN_TEAM_LIMIT) throw new Error(`A round-robin schedule supports up to ${ROUND_ROBIN_TEAM_LIMIT} teams.`)
   if (new Set(teams.map((team) => team.id)).size !== teams.length) throw new Error('Team IDs must be unique.')
 
   const rotation: Array<FixtureTeam | null> = [...teams]
