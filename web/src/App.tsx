@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
-import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
+import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -617,7 +617,7 @@ function TeamDialog({
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
   const [previewDeliveries, setPreviewDeliveries] = useState<DeliveryEvent[]>([])
-  const [previewMatch, setPreviewMatch] = useState<{ tournamentId?: string; tournamentName: string; ballsPerOver: number; fixture: PlayableFixture } | null>(null)
+  const [previewMatch, setPreviewMatch] = useState<{ tournamentId?: string; tournamentName: string; oversLimit: number; ballsPerOver: number; fixture: PlayableFixture } | null>(null)
   const [loadedMatchKey, setLoadedMatchKey] = useState<string | null>(null)
   const [scoreSaveStatus, setScoreSaveStatus] = useState('')
   const [organizer, setOrganizer] = useState<string | null>(null)
@@ -712,6 +712,7 @@ function App() {
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
   const visibleTournaments = organizerUid ? tournaments : initialTournaments
   const previewBallsPerOver = previewMatch?.ballsPerOver ?? 6
+  const previewOversLimit = previewMatch?.oversLimit ?? 20
   const previewScore = summarizeInnings(previewDeliveries, previewBallsPerOver)
   const previewTeamA = previewMatch?.fixture.teamA
   const previewTeamB = previewMatch?.fixture.teamB
@@ -728,7 +729,7 @@ function App() {
   const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
   const previewDismissed = new Set(previewBatters.filter((batter) => batter.dismissed).map((batter) => batter.playerId))
   const previewIncoming = previewLineup.find(({ id }) => id !== previewEnds.strikerId && id !== previewEnds.nonStrikerId && !previewDismissed.has(id))
-  const previewInningsOver = previewScore.wickets >= previewLineup.length - 1
+  const previewInningsOver = isInningsComplete(previewDeliveries, previewOversLimit, previewLineup.length, previewBallsPerOver)
   const previewCanRecordWicket = !previewInningsOver && (Boolean(previewIncoming) || previewScore.wickets === previewLineup.length - 2)
   const previewMatchLoading = Boolean(organizerUid && previewMatchKey && loadedMatchKey !== previewMatchKey)
 
@@ -976,7 +977,7 @@ function App() {
         setLoadedMatchKey(null)
         setScoreSaveStatus(tournamentId && organizerUid ? 'Loading saved score...' : '')
         currentPreviewScoreRef.current = { key: matchKey, deliveries: JSON.stringify([]) }
-        setPreviewMatch({ tournamentId, tournamentName: tournament.name, ballsPerOver: tournament.ballsPerOver, fixture })
+        setPreviewMatch({ tournamentId, tournamentName: tournament.name, oversLimit: tournament.overs, ballsPerOver: tournament.ballsPerOver, fixture })
         setPreviewDeliveries([])
       }} />
     </div>
