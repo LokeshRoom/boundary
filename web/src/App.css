@@ -163,6 +163,13 @@ h1, h2, p { margin-top: 0; }
 .bracket-match { display: grid; gap: 4px; padding: 9px; border: 1px solid #e2e9e0; border-radius: 6px; font-size: 11px; }
 .bracket-match small { color: #728176; font-size: 9px; }
 .bracket-save { display: grid; justify-items: start; gap: 7px; margin-top: 8px; }
+.league-schedule { display: grid; gap: 6px; }
+.league-round { border: 1px solid #e2e9e0; border-radius: 6px; }
+.league-round summary { display: flex; justify-content: space-between; gap: 12px; padding: 9px; color: #33483a; font-size: 11px; font-weight: 700; cursor: pointer; }
+.league-round summary span { color: #748076; font-weight: 500; }
+.league-fixtures { display: grid; gap: 4px; padding: 0 9px 9px; }
+.league-fixture { display: flex; flex-wrap: wrap; gap: 7px; color: #536158; font-size: 10px; }
+.league-fixture span { color: #748076; }
 
 @media (max-width: 1000px) {
   .sidebar { width: 205px; }

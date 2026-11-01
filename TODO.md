@@ -24,7 +24,8 @@
 - [x] Add organizer roster entry for player name, jersey number, and role.
 - [x] Preview knockout rounds with automatic byes and winner placeholders.
 - [x] Persist the generated knockout bracket as a public, organizer-created fixture document.
-- [ ] Generate round-robin and group-stage schedules.
+- [x] Preview a single round-robin schedule for league tournaments.
+- [ ] Persist round-robin schedules and generate group-stage schedules.
 - [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.

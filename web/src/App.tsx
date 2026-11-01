@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
-import { generateKnockoutRounds, type FixtureEntrant } from './fixtures'
+import { generateKnockoutRounds, generateRoundRobinRounds, type FixtureEntrant } from './fixtures'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -152,6 +152,7 @@ function TeamDialog({
   const [players, setPlayers] = useState<Player[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
   const [bracketTournamentId, setBracketTournamentId] = useState<string | null>(null)
+  const [leagueScheduleTournamentId, setLeagueScheduleTournamentId] = useState<string | null>(null)
   const [savingBracket, setSavingBracket] = useState(false)
   const [bracketMessage, setBracketMessage] = useState('')
   const [bracketMessageTournamentId, setBracketMessageTournamentId] = useState<string | null>(null)
@@ -315,8 +316,12 @@ function TeamDialog({
   }
 
   const showBracket = bracketTournamentId === tournament?.id
+  const showLeagueSchedule = leagueScheduleTournamentId === tournament?.id
   const knockoutRounds = showBracket && !loading && tournament?.format === 'Knockout' && teams.length >= 2
     ? generateKnockoutRounds(teams)
+    : []
+  const leagueRounds = showLeagueSchedule && !loading && tournament?.format === 'League' && teams.length >= 2
+    ? generateRoundRobinRounds(teams)
     : []
 
   return (
@@ -349,6 +354,7 @@ function TeamDialog({
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>
           {tournament?.format === 'Knockout' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2} onClick={() => setBracketTournamentId(showBracket ? null : tournament.id ?? null)}>{showBracket ? 'Hide bracket preview' : 'Preview knockout bracket'}</button>}
+          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2} onClick={() => setLeagueScheduleTournamentId(showLeagueSchedule ? null : tournament.id ?? null)}>{showLeagueSchedule ? 'Hide schedule preview' : 'Preview round-robin schedule'}</button>}
           {knockoutRounds.length > 0 && <section aria-label="Knockout bracket preview">
             <p className="form-note">Preview only. Byes go to teams in the listed order.</p>
             <div className="bracket-preview">
@@ -364,6 +370,13 @@ function TeamDialog({
               <button className="button button-primary" type="button" disabled={savingBracket} onClick={saveBracket}>{savingBracket ? 'Saving...' : 'Save bracket'} <Icon name="arrow" size={16} /></button>
               {bracketMessageTournamentId === tournament.id && bracketMessage && <p className="form-note" role="status">{bracketMessage}</p>}
             </div>
+          </section>}
+          {leagueRounds.length > 0 && <section className="league-schedule" aria-label="Round-robin schedule preview">
+            <p className="form-note">Preview only · each team plays every other team once.</p>
+            {leagueRounds.map((round) => <details className="league-round" key={round.name}>
+              <summary>{round.name}<span>{round.matches.length} fixtures</span></summary>
+              <div className="league-fixtures">{round.matches.map((match, index) => <div className="league-fixture" key={`${round.name}-${index}`}><strong>{match.teamA.name}</strong><span>{match.bye ? 'Bye' : 'vs'}</span>{match.teamB && <strong>{match.teamB.name}</strong>}</div>)}</div>
+            </details>)}
           </section>}
           {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">
             <div className="roster-heading"><h3 id="roster-title">{activeTeam.name} roster</h3><button className="roster-action" type="button" onClick={() => setActiveTeam(null)}>All teams</button></div>

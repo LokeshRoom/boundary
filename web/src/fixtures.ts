@@ -19,6 +19,17 @@ export type KnockoutRound = {
   matches: KnockoutMatch[]
 }
 
+export type RoundRobinMatch = {
+  teamA: FixtureTeam
+  teamB?: FixtureTeam
+  bye: boolean
+}
+
+export type RoundRobinRound = {
+  name: string
+  matches: RoundRobinMatch[]
+}
+
 function roundName(matchCount: number) {
   if (matchCount === 1) return 'Final'
   if (matchCount === 2) return 'Semi-finals'
@@ -73,4 +84,26 @@ export function generateKnockoutRounds(teams: readonly FixtureTeam[]): KnockoutR
   }
 
   return rounds
+}
+
+export function generateRoundRobinRounds(teams: readonly FixtureTeam[]): RoundRobinRound[] {
+  if (teams.length < 2) throw new Error('A round-robin schedule needs at least two teams.')
+  if (new Set(teams.map((team) => team.id)).size !== teams.length) throw new Error('Team IDs must be unique.')
+
+  const rotation: Array<FixtureTeam | null> = [...teams]
+  if (rotation.length % 2 === 1) rotation.push(null)
+
+  return Array.from({ length: rotation.length - 1 }, (_, roundIndex) => {
+    const matches: RoundRobinMatch[] = []
+    for (let index = 0; index < rotation.length / 2; index += 1) {
+      const teamA = rotation[index]
+      const teamB = rotation[rotation.length - index - 1]
+      if (teamA && teamB) matches.push({ teamA, teamB, bye: false })
+      else if (teamA || teamB) matches.push({ teamA: teamA ?? teamB!, bye: true })
+    }
+
+    const lastTeam = rotation.pop()!
+    rotation.splice(1, 0, lastTeam)
+    return { name: `Round ${roundIndex + 1}`, matches }
+  })
 }
