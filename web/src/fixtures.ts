@@ -30,6 +30,12 @@ export type RoundRobinRound = {
   matches: RoundRobinMatch[]
 }
 
+export type GroupStageGroup = {
+  name: string
+  teams: FixtureTeam[]
+  rounds: RoundRobinRound[]
+}
+
 export const ROUND_ROBIN_TEAM_LIMIT = 64
 
 function roundName(matchCount: number) {
@@ -108,5 +114,30 @@ export function generateRoundRobinRounds(teams: readonly FixtureTeam[]): RoundRo
     const lastTeam = rotation.pop()!
     rotation.splice(1, 0, lastTeam)
     return { name: `Round ${roundIndex + 1}`, matches }
+  })
+}
+
+export function generateGroupStage(teams: readonly FixtureTeam[], groupCount: number): GroupStageGroup[] {
+  if (teams.length < 4) throw new Error('A group stage needs at least four teams.')
+  if (teams.length > ROUND_ROBIN_TEAM_LIMIT) throw new Error(`A group stage supports up to ${ROUND_ROBIN_TEAM_LIMIT} teams.`)
+  if (!Number.isInteger(groupCount) || groupCount < 2 || groupCount > Math.floor(teams.length / 2)) {
+    throw new Error('Choose at least two groups with at least two teams in each group.')
+  }
+  if (new Set(teams.map((team) => team.id)).size !== teams.length) throw new Error('Team IDs must be unique.')
+
+  const groupedTeams = Array.from({ length: groupCount }, () => [] as FixtureTeam[])
+  teams.forEach((team, index) => {
+    const position = index % (groupCount * 2)
+    const groupIndex = position < groupCount ? position : groupCount * 2 - position - 1
+    groupedTeams[groupIndex].push(team)
+  })
+
+  return groupedTeams.map((groupTeams, index) => {
+    const suffix = index < 26 ? String.fromCharCode(65 + index) : String(index + 1)
+    return {
+      name: `Group ${suffix}`,
+      teams: groupTeams,
+      rounds: generateRoundRobinRounds(groupTeams),
+    }
   })
 }
