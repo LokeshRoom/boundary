@@ -11,6 +11,8 @@ export type Tournament = {
   status: Status
   note: string
   overs: number
+  ballsPerOver: number
+  powerplayOvers: number
   startDate?: string
   endDate?: string
   venue?: string
@@ -43,6 +45,8 @@ export async function saveTournament(ownerUid: string, tournament: Tournament) {
     status: 'REGISTRATION',
     organizerUid: ownerUid,
     oversPerInnings: tournament.overs,
+    ballsPerOver: tournament.ballsPerOver,
+    powerplayOvers: tournament.powerplayOvers,
     startDate: tournament.startDate,
     ...(tournament.endDate ? { endDate: tournament.endDate } : {}),
     venue: tournament.venue,
@@ -67,6 +71,8 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       status: statuses[data.status] ?? 'Upcoming',
       note: 'Saved to Firebase',
       overs: data.oversPerInnings,
+      ballsPerOver: data.ballsPerOver,
+      powerplayOvers: data.powerplayOvers,
       startDate: data.startDate,
       endDate: data.endDate,
       venue: data.venue,

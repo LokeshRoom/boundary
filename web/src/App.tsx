@@ -4,9 +4,9 @@ import { listOwnedTournaments, saveTournament, type Format, type Status, type To
 import './App.css'
 
 const initialTournaments: Tournament[] = [
-  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left', overs: 20, venue: 'Riverside Ground', startDate: '2026-06-14' },
-  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings', overs: 12, venue: 'Central Turf', startDate: '2026-05-03' },
-  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC', overs: 20, venue: 'Northside Oval', startDate: '2026-03-22' },
+  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Riverside Ground', startDate: '2026-06-14' },
+  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings', overs: 12, ballsPerOver: 6, powerplayOvers: 4, venue: 'Central Turf', startDate: '2026-05-03' },
+  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Northside Oval', startDate: '2026-03-22' },
 ]
 
 const navItems = [
@@ -48,6 +48,8 @@ function TournamentDialog({
   canSave: boolean
 }) {
   const [submitting, setSubmitting] = useState(false)
+  const [overs, setOvers] = useState(20)
+  const [powerplayOvers, setPowerplayOvers] = useState(6)
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -58,7 +60,10 @@ function TournamentDialog({
     const startDate = String(form.get('startDate') ?? '')
     const endDate = String(form.get('endDate') ?? '')
     const venue = String(form.get('venue') ?? '').trim()
+    const ballsPerOver = Number(form.get('ballsPerOver'))
+    const powerplayOvers = Number(form.get('powerplayOvers'))
     if (!name || !venue || !startDate || !Number.isInteger(overs) || overs < 1 || overs > 100) return
+    if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1 || ballsPerOver > 12 || !Number.isInteger(powerplayOvers) || powerplayOvers < 0 || powerplayOvers > overs) return
     const endDateInput = formElement.elements.namedItem('endDate') as HTMLInputElement
     if (endDate && endDate < startDate) {
       endDateInput.setCustomValidity('End date must be on or after the start date.')
@@ -68,10 +73,12 @@ function TournamentDialog({
     endDateInput.setCustomValidity('')
 
     setSubmitting(true)
-    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', note: 'Preview only', overs, startDate, endDate: endDate || undefined, venue })
+    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', note: 'Preview only', overs, ballsPerOver, powerplayOvers, startDate, endDate: endDate || undefined, venue })
       .then((saved) => {
         if (!saved) return
         formElement.reset()
+        setOvers(20)
+        setPowerplayOvers(6)
         dialogRef.current?.close()
       })
       .finally(() => setSubmitting(false))
@@ -104,7 +111,15 @@ function TournamentDialog({
         <label className="field-label" htmlFor="tournament-venue">Venue</label>
         <input id="tournament-venue" name="venue" placeholder="e.g. Riverside Ground" required maxLength={100} />
         <label className="field-label" htmlFor="tournament-overs">Overs per innings</label>
-        <input id="tournament-overs" name="overs" type="number" min="1" max="100" defaultValue="20" required />
+        <input id="tournament-overs" name="overs" type="number" min="1" max="100" value={overs} onChange={(event) => {
+          const nextOvers = Number(event.currentTarget.value)
+          setOvers(nextOvers)
+          setPowerplayOvers((current) => Math.min(current, nextOvers))
+        }} required />
+        <label className="field-label" htmlFor="tournament-balls-per-over">Balls per over</label>
+        <input id="tournament-balls-per-over" name="ballsPerOver" type="number" min="1" max="12" defaultValue="6" required />
+        <label className="field-label" htmlFor="tournament-powerplay-overs">Powerplay overs</label>
+        <input id="tournament-powerplay-overs" name="powerplayOvers" type="number" min="0" max={overs} value={powerplayOvers} onChange={(event) => setPowerplayOvers(Number(event.currentTarget.value))} required />
         <p className="form-note">{canSave ? 'This tournament will be saved to your Firebase account.' : 'Preview only. Sign in with Firebase configured to save tournaments.'}</p>
         <div className="dialog-actions">
           <button className="button button-quiet" type="button" onClick={() => dialogRef.current?.close()}>Cancel</button>

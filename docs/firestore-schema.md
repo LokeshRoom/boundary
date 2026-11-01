@@ -11,6 +11,8 @@
 | `status` | `REGISTRATION`, `UPCOMING`, `LIVE`, or `COMPLETED` | Tournament lifecycle |
 | `organizerUid` | string | Firebase Auth UID that owns writes; visible in public reads |
 | `oversPerInnings` | integer, 1-100 | Innings limit |
+| `ballsPerOver` | integer, 1-12 | Delivery count per over; defaults to 6 |
+| `powerplayOvers` | integer, 0-overs per innings | Powerplay length; 0 disables the powerplay |
 | `startDate` | `YYYY-MM-DD` string | Tournament start date |
 | `endDate` | optional `YYYY-MM-DD` string | Tournament end date; cannot precede the start date |
 | `venue` | string, 1-100 characters | Primary venue |
