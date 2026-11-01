@@ -225,6 +225,8 @@ test('rotates the strike on odd completed runs and at the end of a legal over', 
   assert.deepEqual(advanceBattingEnds(ends, delivery({ completedRuns: 1 }), 5, 6), ends)
   assert.deepEqual(getBattingEndsAfter([delivery({ completedRuns: 1 }), delivery({ strikerId: 'batter-2' })], ends, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
   assert.throws(() => advanceBattingEnds(ends, delivery({ strikerId: 'batter-2' }), 0, 6), /striker end/)
+  assert.throws(() => getBattingEndsAfter([], { strikerId: 'batter-1', nonStrikerId: 'batter-1' }, 6), /different players/)
+  assert.throws(() => getBattingEndsAfter([], ends, 0), /positive integer/)
 })
 
 test('replaces a dismissed striker from the batting lineup and keeps history undoable', () => {

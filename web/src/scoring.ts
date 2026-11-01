@@ -150,6 +150,11 @@ export type BattingEnds = {
   nonStrikerId: string
 }
 
+function validateBattingEnds(ends: BattingEnds, ballsPerOver: number) {
+  if (!ends.strikerId || !ends.nonStrikerId || ends.strikerId === ends.nonStrikerId) throw new Error('The striker and non-striker must be different players.')
+  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+}
+
 const extrasTypes: ExtrasType[] = ['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY']
 
 function validateDelivery(delivery: DeliveryEvent) {
@@ -228,8 +233,7 @@ export function advanceBattingEnds(
   ballsPerOver: number,
 ): BattingEnds {
   validateDelivery(delivery)
-  if (!ends.strikerId || !ends.nonStrikerId || ends.strikerId === ends.nonStrikerId) throw new Error('The striker and non-striker must be different players.')
-  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  validateBattingEnds(ends, ballsPerOver)
   if (!Number.isInteger(legalBallsInOverBefore) || legalBallsInOverBefore < 0 || legalBallsInOverBefore >= ballsPerOver) throw new Error('Legal balls in the current over are out of range.')
   if (delivery.strikerId !== ends.strikerId) throw new Error('The delivery striker must be at the striker end.')
   if (delivery.isWicket && (delivery.dismissedBatterId !== ends.strikerId || delivery.completedRuns !== 0 || delivery.runsOffBat !== 0)) throw new Error('A wicket in the preview must dismiss the striker without completed runs.')
@@ -248,6 +252,7 @@ export function advanceBattingEnds(
 }
 
 export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openingEnds: BattingEnds, ballsPerOver: number): BattingEnds {
+  validateBattingEnds(openingEnds, ballsPerOver)
   let ends = openingEnds
   let legalBallsInOver = 0
   const dismissedBatterIds = new Set<string>()
