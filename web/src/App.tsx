@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
-import { createTeam, listTeams, type NewTeam, type Team } from './teams'
+import { addPlayer, createTeam, listPlayers, listTeams, type NewPlayer, type NewTeam, type Player, type PlayerRole, type Team } from './teams'
 import { listOwnedTournaments, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
@@ -144,6 +144,9 @@ function TeamDialog({
 }) {
   const [teams, setTeams] = useState<Team[]>([])
   const [teamsTournamentId, setTeamsTournamentId] = useState<string | null>(null)
+  const [activeTeam, setActiveTeam] = useState<Team | null>(null)
+  const [players, setPlayers] = useState<Player[]>([])
+  const [playersLoading, setPlayersLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const loading = Boolean(tournament?.id && teamsTournamentId !== tournament.id)
@@ -196,6 +199,39 @@ function TeamDialog({
     }).finally(() => setSubmitting(false))
   }
 
+  function openRoster(team: Team) {
+    if (!tournament?.id) return
+    setActiveTeam(team)
+    setPlayers([])
+    setPlayersLoading(true)
+    setError('')
+    void listPlayers(tournament.id, team.id).then(setPlayers).catch(() => {
+      setError('Could not load this roster. Check your Firestore rules and connection.')
+    }).finally(() => setPlayersLoading(false))
+  }
+
+  function submitPlayer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!tournament?.id || !activeTeam || !canManage) return
+    const formElement = event.currentTarget
+    const form = new FormData(formElement)
+    const player: NewPlayer = {
+      name: String(form.get('playerName') ?? '').trim(),
+      jerseyNumber: Number(form.get('jerseyNumber')),
+      role: form.get('playerRole') as PlayerRole,
+    }
+    if (!player.name || !Number.isInteger(player.jerseyNumber) || player.jerseyNumber < 0 || player.jerseyNumber > 99) return
+
+    setSubmitting(true)
+    setError('')
+    void addPlayer(tournament.id, activeTeam.id, player).then((created) => {
+      setPlayers((current) => [...current, created])
+      formElement.reset()
+    }).catch(() => {
+      setError('Could not add this player. Check your Firestore connection and rules.')
+    }).finally(() => setSubmitting(false))
+  }
+
   return (
     <dialog className="create-dialog" ref={dialogRef} aria-labelledby="teams-title">
       <div className="dialog-form">
@@ -205,9 +241,25 @@ function TeamDialog({
         </div>
         {!tournament?.id || !canManage ? <p className="form-note">Save this tournament and sign in as its organizer to manage teams.</p> : <>
           <div className="team-list" aria-live="polite">
-            {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span></div>) : <p className="form-note">No teams added yet.</p>}
+            {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>
-          <form className="team-create-form" onSubmit={submit}>
+          {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">
+            <div className="roster-heading"><h3 id="roster-title">{activeTeam.name} roster</h3><button className="roster-action" type="button" onClick={() => setActiveTeam(null)}>All teams</button></div>
+            <div className="player-list" aria-live="polite">
+              {playersLoading ? <p className="form-note">Loading roster...</p> : players.length ? players.map((player) => <div className="team-list-row" key={player.id}><strong>{player.name}</strong><span>#{player.jerseyNumber} / {player.role.replaceAll('_', ' ')}</span></div>) : <p className="form-note">No players added yet.</p>}
+            </div>
+            <form className="team-create-form" onSubmit={submitPlayer}>
+              <label className="field-label" htmlFor="player-name">Player name</label>
+              <input id="player-name" name="playerName" required maxLength={60} />
+              <label className="field-label" htmlFor="player-jersey">Jersey number</label>
+              <input id="player-jersey" name="jerseyNumber" type="number" min="0" max="99" required />
+              <label className="field-label" htmlFor="player-role">Role</label>
+              <select id="player-role" name="playerRole" defaultValue="BATTER"><option value="BATTER">Batter</option><option value="BOWLER">Bowler</option><option value="ALL_ROUNDER">All-rounder</option><option value="WICKETKEEPER">Wicketkeeper</option></select>
+              {error && <p className="team-error" role="status">{error}</p>}
+              <div className="dialog-actions"><button className="button button-primary" type="submit" disabled={submitting || playersLoading}>{submitting ? 'Saving...' : 'Add player'} <Icon name="arrow" size={16} /></button></div>
+            </form>
+          </section>}
+          {!activeTeam && <form className="team-create-form" onSubmit={submit}>
             <label className="field-label" htmlFor="team-name">Team name</label>
             <input id="team-name" name="teamName" required maxLength={60} placeholder="e.g. Cedar Cricket Club" />
             <label className="field-label" htmlFor="team-short-name">Short name</label>
@@ -219,7 +271,7 @@ function TeamDialog({
             <p className="form-note">Captain contact details are saved in a private organizer-only record.</p>
             {error && <p className="team-error" role="status">{error}</p>}
             <div className="dialog-actions"><button className="button button-primary" type="submit" disabled={submitting || loading}>{submitting ? 'Saving...' : 'Add team'} <Icon name="arrow" size={16} /></button></div>
-          </form>
+          </form>}
         </>}
         {error && (!canManage || !tournament?.id) && <p className="team-error" role="status">{error}</p>}
       </div>

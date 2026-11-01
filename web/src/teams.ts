@@ -13,6 +13,17 @@ export type NewTeam = {
   captainContact: string
 }
 
+export type PlayerRole = 'BATTER' | 'BOWLER' | 'ALL_ROUNDER' | 'WICKETKEEPER'
+
+export type Player = {
+  id: string
+  name: string
+  jerseyNumber: number
+  role: PlayerRole
+}
+
+export type NewPlayer = Omit<Player, 'id'>
+
 export async function listTeams(tournamentId: string): Promise<Team[]> {
   const { firestore, collection, getDocs } = await getFirebaseFirestore()
   const result = await getDocs(collection(firestore, 'tournaments', tournamentId, 'teams'))
@@ -42,4 +53,16 @@ export async function createTeam(tournamentId: string, team: NewTeam): Promise<T
   await batch.commit()
 
   return { id: teamRef.id, name: team.name, shortName: team.shortName }
+}
+
+export async function listPlayers(tournamentId: string, teamId: string): Promise<Player[]> {
+  const { firestore, collection, getDocs } = await getFirebaseFirestore()
+  const result = await getDocs(collection(firestore, 'tournaments', tournamentId, 'teams', teamId, 'players'))
+  return result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }) as Player)
+}
+
+export async function addPlayer(tournamentId: string, teamId: string, player: NewPlayer): Promise<Player> {
+  const { firestore, addDoc, collection } = await getFirebaseFirestore()
+  const result = await addDoc(collection(firestore, 'tournaments', tournamentId, 'teams', teamId, 'players'), player)
+  return { id: result.id, ...player }
 }

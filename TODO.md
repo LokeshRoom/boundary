@@ -15,7 +15,8 @@
 - [x] Let organizers create approved teams with captain contacts stored in private records.
 - [x] Build organizer authentication and persistent tournament setup.
 - [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
-- [ ] Add public team registration, organizer approval, and roster management.
+- [ ] Add public team registration and organizer approval workflow.
+- [x] Add organizer roster entry for player name, jersey number, and role.
 - [ ] Generate knockout, round-robin, and group-stage fixtures.
 - [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.

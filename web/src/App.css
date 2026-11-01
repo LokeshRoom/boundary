@@ -123,7 +123,7 @@ h1, h2, p { margin-top: 0; }
 .page-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; color: #98a299; font-size: 8px; font-weight: 700; letter-spacing: .06em; }
 .create-dialog { width: min(440px, calc(100% - 32px)); padding: 0; border: 1px solid #e1e8df; border-radius: 13px; color: #263b2e; background: #fff; box-shadow: 0 24px 80px #172c1e33; }
 .create-dialog::backdrop { background: #15251db0; backdrop-filter: blur(2px); }
-.dialog-form { display: grid; gap: 11px; padding: 25px; }
+.dialog-form { display: grid; max-height: calc(100dvh - 32px); gap: 11px; overflow-y: auto; padding: 25px; }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 8px; }
 .dialog-heading h2 { margin: 5px 0 0; color: #233c2d; font-family: 'Barlow Condensed', sans-serif; font-size: 27px; }
 .icon-button { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 7px; color: #66756a; background: #f2f5f1; cursor: pointer; }
@@ -137,6 +137,12 @@ h1, h2, p { margin-top: 0; }
 .team-list-row span { color: #748076; font-weight: 700; letter-spacing: .06em; }
 .team-create-form { display: grid; gap: 11px; }
 .team-error { margin: 0; color: #9d3d30; font-size: 11px; line-height: 1.45; }
+.roster-action { border: 0; padding: 3px 0; color: #39734a; background: transparent; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.roster-action:disabled { opacity: .5; cursor: wait; }
+.roster-panel { display: grid; gap: 11px; padding-top: 14px; border-top: 1px solid #dfe7dd; }
+.roster-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.roster-heading h3 { margin: 0; color: #233c2d; font-family: 'Barlow Condensed', sans-serif; font-size: 19px; }
+.player-list { max-height: 135px; overflow-y: auto; }
 
 @media (max-width: 1000px) {
   .sidebar { width: 205px; }
