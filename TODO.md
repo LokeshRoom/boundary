@@ -31,6 +31,7 @@
 - [x] Persist and reload generated group-stage fixtures.
 - [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
+- [x] Detect innings completion at the overs limit or when all but one batter are out.
 - [ ] Build the organizer ball-by-ball scoring console and persist match/over state.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.

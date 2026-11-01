@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildInningsScorecard, groupDeliveriesByOver, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { buildInningsScorecard, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -109,4 +109,19 @@ test('composes an innings total with batting and bowling figures', () => {
   assert.equal(scorecard.summary.runs, 5)
   assert.equal(scorecard.batting.reduce((total, batter) => total + batter.runs, 0), 5)
   assert.equal(scorecard.bowling[0].runsConceded, 5)
+})
+
+test('ends an innings at the legal-ball limit or when all but one batter are out', () => {
+  const overLimitBalls = [
+    delivery({ extrasType: 'WIDE', extrasRuns: 1, legalBall: false }),
+    delivery(),
+    delivery(),
+  ]
+  assert.equal(isInningsComplete(overLimitBalls.slice(0, 2), 1, 3, 2), false)
+  assert.equal(isInningsComplete(overLimitBalls, 1, 3, 2), true)
+  assert.equal(isInningsComplete([
+    delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED' }),
+    delivery({ isWicket: true, dismissedBatterId: 'batter-2', dismissalType: 'CAUGHT' }),
+  ], 20, 3, 6), true)
+  assert.throws(() => isInningsComplete([], 0, 11, 6), /Overs limit/)
 })

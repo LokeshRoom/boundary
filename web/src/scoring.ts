@@ -156,6 +156,18 @@ export function summarizeInnings(deliveries: readonly DeliveryEvent[], ballsPerO
   }
 }
 
+export function isInningsComplete(
+  deliveries: readonly DeliveryEvent[],
+  oversLimit: number,
+  battingPlayers: number,
+  ballsPerOver: number,
+): boolean {
+  if (!Number.isInteger(oversLimit) || oversLimit < 1) throw new Error('Overs limit must be a positive integer.')
+  if (!Number.isInteger(battingPlayers) || battingPlayers < 2) throw new Error('A batting lineup must have at least two players.')
+  const summary = summarizeInnings(deliveries, ballsPerOver)
+  return summary.wickets >= battingPlayers - 1 || summary.legalBalls >= oversLimit * ballsPerOver
+}
+
 export function undoLastDelivery(deliveries: readonly DeliveryEvent[]): DeliveryEvent[] {
   return deliveries.slice(0, -1)
 }
