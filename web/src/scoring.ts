@@ -61,6 +61,34 @@ export type LiveMatchSnapshot = {
   recentBalls: DeliveryEvent[]
 }
 
+export function parseLiveMatchSnapshot(value: unknown, ballsPerOver: number): LiveMatchSnapshot {
+  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Saved live match data is invalid.')
+  const match = value as Record<string, unknown>
+  if ((match.currentInnings !== 1 && match.currentInnings !== 2) || !Array.isArray(match.recentBalls) || match.recentBalls.length > 18) throw new Error('Saved live match data is invalid.')
+
+  const summary = match.scoreSummary
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) throw new Error('Saved live match data is invalid.')
+  const score = summary as Record<string, unknown>
+  const extras = score.extras
+  const extraTypes: ExtrasType[] = ['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY']
+  if (!extras || typeof extras !== 'object' || Array.isArray(extras)) throw new Error('Saved live match data is invalid.')
+  const extraRuns = extras as Record<string, unknown>
+  if (Object.keys(extraRuns).length !== extraTypes.length || extraTypes.some((type) => !Number.isInteger(extraRuns[type]) || (extraRuns[type] as number) < 0)) throw new Error('Saved live match data is invalid.')
+
+  const { runs, wickets, legalBalls, overs, runRate, runsOffBat } = score
+  if (![runs, wickets, legalBalls, runsOffBat].every((number) => Number.isInteger(number) && (number as number) >= 0) || typeof overs !== 'string' || typeof runRate !== 'number' || !Number.isFinite(runRate) || runRate < 0) throw new Error('Saved live match data is invalid.')
+  const totalExtras = extraTypes.reduce((total, type) => total + (extraRuns[type] as number), 0)
+  if (runs !== (runsOffBat as number) + totalExtras || overs !== `${Math.floor((legalBalls as number) / ballsPerOver)}.${(legalBalls as number) % ballsPerOver}` || runRate !== ((legalBalls as number) === 0 ? 0 : (runs as number) * ballsPerOver / (legalBalls as number))) throw new Error('Saved live match totals are inconsistent.')
+
+  summarizeInnings(match.recentBalls as DeliveryEvent[], ballsPerOver)
+  return {
+    currentInnings: match.currentInnings,
+    scoreSummary: score as unknown as InningsSummary,
+    recentBalls: match.recentBalls as DeliveryEvent[],
+  }
+}
+
 export type BattingEnds = {
   strikerId: string
   nonStrikerId: string

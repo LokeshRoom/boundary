@@ -1,6 +1,6 @@
 import { getFirebaseFirestore } from './firebase'
 import type { GroupStageGroup, KnockoutRound, PlayableFixture, RoundRobinRound } from './fixtures'
-import { flattenOverBatches, type LiveMatchSnapshot, type OverDeliveryBatch } from './scoring'
+import { flattenOverBatches, parseLiveMatchSnapshot, type LiveMatchSnapshot, type OverDeliveryBatch } from './scoring'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
@@ -60,20 +60,16 @@ export async function saveLiveMatchSnapshot(tournamentId: string, fixture: Playa
   })
 }
 
-export async function getLiveMatchSnapshot(tournamentId: string, fixture: PlayableFixture): Promise<LiveMatchSnapshot | null> {
+export async function getLiveMatchSnapshot(tournamentId: string, fixture: PlayableFixture, ballsPerOver: number): Promise<LiveMatchSnapshot | null> {
   const { firestore, doc, getDoc } = await getFirebaseFirestore()
   const snapshot = await getDoc(doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id)))
   if (!snapshot.exists()) return null
 
   const match = snapshot.data()
-  if (match.tournamentId !== tournamentId || match.fixtureId !== fixture.id || (match.currentInnings !== 1 && match.currentInnings !== 2) || !Array.isArray(match.recentBalls) || match.recentBalls.length > 18 || !match.scoreSummary || typeof match.scoreSummary !== 'object') {
+  if (match.tournamentId !== tournamentId || match.fixtureId !== fixture.id) {
     throw new Error('Saved live match data is invalid.')
   }
-  return {
-    currentInnings: match.currentInnings,
-    scoreSummary: match.scoreSummary as LiveMatchSnapshot['scoreSummary'],
-    recentBalls: match.recentBalls as LiveMatchSnapshot['recentBalls'],
-  }
+  return parseLiveMatchSnapshot(match, ballsPerOver)
 }
 
 export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number) {

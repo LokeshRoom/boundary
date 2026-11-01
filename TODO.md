@@ -43,6 +43,7 @@
 - [x] Group historical delivery events into over-numbered batches for compact persistence.
 - [x] Restore delivery order from validated over batches.
 - [x] Build bounded live match snapshots with full totals and the latest 18 deliveries.
+- [x] Validate saved live snapshot totals and recent delivery events before restoring.
 - [x] Add save/load functions for bounded live match summary documents.
 - [ ] Emulator-test public live match reads and organizer-only match writes.
 - [x] Add save/load functions and owner-only rules for historical over batches.

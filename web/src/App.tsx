@@ -689,7 +689,7 @@ function App() {
     let active = true
     const load = scoreSaveQueueRef.current.then(() => Promise.all([
       getOverDeliveryBatches(match.tournamentId!, match.fixture, match.ballsPerOver),
-      getLiveMatchSnapshot(match.tournamentId!, match.fixture),
+      getLiveMatchSnapshot(match.tournamentId!, match.fixture, match.ballsPerOver),
     ]))
     void load.then(([batches, snapshot]) => {
       if (!active) return
