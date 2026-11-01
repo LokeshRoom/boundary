@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'rea
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type RoundRobinRound } from './fixtures'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { getRoundRobinFixtures, listOwnedTournaments, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
+import { getGroupStageFixtures, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
@@ -155,6 +155,12 @@ function TeamDialog({
   const [leagueScheduleTournamentId, setLeagueScheduleTournamentId] = useState<string | null>(null)
   const [groupStageTournamentId, setGroupStageTournamentId] = useState<string | null>(null)
   const [groupCount, setGroupCount] = useState(2)
+  const [savedGroupStageTournamentId, setSavedGroupStageTournamentId] = useState<string | null>(null)
+  const [savedGroups, setSavedGroups] = useState<GroupStageGroup[] | null>(null)
+  const [loadingGroupStage, setLoadingGroupStage] = useState(false)
+  const [savingGroupStage, setSavingGroupStage] = useState(false)
+  const [groupStageMessage, setGroupStageMessage] = useState('')
+  const [groupStageMessageTournamentId, setGroupStageMessageTournamentId] = useState<string | null>(null)
   const [savedLeagueScheduleTournamentId, setSavedLeagueScheduleTournamentId] = useState<string | null>(null)
   const [savedLeagueRounds, setSavedLeagueRounds] = useState<RoundRobinRound[] | null>(null)
   const [loadingLeagueSchedule, setLoadingLeagueSchedule] = useState(false)
@@ -283,6 +289,34 @@ function TeamDialog({
     })
   }
 
+  function toggleGroupStage() {
+    if (!tournament?.id) return
+    if (showGroupStage) {
+      setGroupStageTournamentId(null)
+      return
+    }
+
+    const tournamentId = tournament.id
+    setGroupStageTournamentId(tournamentId)
+    setLoadingGroupStage(true)
+    setGroupStageMessage('')
+    void getGroupStageFixtures(tournamentId).then((saved) => {
+      setSavedGroupStageTournamentId(tournamentId)
+      setSavedGroups(saved)
+      if (saved) {
+        setGroupCount(saved.length)
+        setGroupStageMessage('Saved group-stage fixtures loaded.')
+      }
+    }).catch(() => {
+      setSavedGroupStageTournamentId(tournamentId)
+      setSavedGroups(null)
+      setGroupStageMessage('Could not load saved group-stage fixtures. Check Firestore rules and connection.')
+    }).finally(() => {
+      setGroupStageMessageTournamentId(tournamentId)
+      setLoadingGroupStage(false)
+    })
+  }
+
   function toggleRegistration() {
     if (!tournament?.id || !canManage || !['Registration open', 'Registration closed'].includes(tournament.status)) return
     const registrationOpen = !tournament.registrationOpen
@@ -365,10 +399,28 @@ function TeamDialog({
     }
   }
 
+  async function saveGroupStage() {
+    if (!tournament?.id || !canManage || groups.length === 0) return
+    setSavingGroupStage(true)
+    setGroupStageMessage('')
+    try {
+      await saveGroupStageFixtures(tournament.id, groups)
+      setSavedGroupStageTournamentId(tournament.id)
+      setSavedGroups(groups)
+      setGroupStageMessage('Group-stage fixtures saved. A saved schedule cannot be replaced yet.')
+    } catch {
+      setGroupStageMessage('Could not save the group-stage fixtures. They may already exist, or Firestore rules may need an update.')
+    } finally {
+      setGroupStageMessageTournamentId(tournament.id)
+      setSavingGroupStage(false)
+    }
+  }
+
   const showBracket = bracketTournamentId === tournament?.id
   const showLeagueSchedule = leagueScheduleTournamentId === tournament?.id
   const showGroupStage = groupStageTournamentId === tournament?.id
   const hasSavedLeagueSchedule = savedLeagueScheduleTournamentId === tournament?.id && savedLeagueRounds !== null
+  const hasSavedGroupStage = savedGroupStageTournamentId === tournament?.id && savedGroups !== null
   const maximumGroupCount = Math.floor(teams.length / 2)
   const selectedGroupCount = Math.max(2, Math.min(groupCount, maximumGroupCount))
   const knockoutRounds = showBracket && !loading && tournament?.format === 'Knockout' && teams.length >= 2
@@ -377,8 +429,8 @@ function TeamDialog({
   const leagueRounds = showLeagueSchedule && !loading && !loadingLeagueSchedule && tournament?.format === 'League' && teams.length >= 2 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
     ? hasSavedLeagueSchedule ? savedLeagueRounds : generateRoundRobinRounds(teams)
     : []
-  const groups: GroupStageGroup[] = showGroupStage && !loading && tournament?.format === 'Groups + playoffs' && teams.length >= 4 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
-    ? generateGroupStage(teams, selectedGroupCount)
+  const groups: GroupStageGroup[] = showGroupStage && !loading && !loadingGroupStage && tournament?.format === 'Groups + playoffs' && teams.length >= 4 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
+    ? hasSavedGroupStage ? savedGroups ?? [] : generateGroupStage(teams, selectedGroupCount)
     : []
 
   return (
@@ -415,10 +467,10 @@ function TeamDialog({
           {tournament?.format === 'League' && teams.length > ROUND_ROBIN_TEAM_LIMIT && <p className="form-note">Round-robin schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p>}
           {tournament?.format === 'Groups + playoffs' && <>
             <label className="field-label" htmlFor="group-count">Number of groups</label>
-            <select id="group-count" value={selectedGroupCount} onChange={(event) => setGroupCount(Number(event.currentTarget.value))}>
+            <select id="group-count" value={hasSavedGroupStage ? savedGroups?.length ?? selectedGroupCount : selectedGroupCount} disabled={hasSavedGroupStage} onChange={(event) => setGroupCount(Number(event.currentTarget.value))}>
               {Array.from({ length: Math.max(0, maximumGroupCount - 1) }, (_, index) => index + 2).map((count) => <option key={count} value={count}>{count} groups</option>)}
             </select>
-            {teams.length < 4 ? <p className="form-note">Add at least four teams to preview group-stage fixtures.</p> : teams.length > ROUND_ROBIN_TEAM_LIMIT ? <p className="form-note">Group-stage schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p> : <button className="text-action bracket-toggle" type="button" disabled={loading} onClick={() => setGroupStageTournamentId(showGroupStage ? null : tournament.id ?? null)}>{showGroupStage ? 'Hide group-stage preview' : 'Preview group-stage fixtures'}</button>}
+            {teams.length < 4 ? <p className="form-note">Add at least four teams to preview group-stage fixtures.</p> : teams.length > ROUND_ROBIN_TEAM_LIMIT ? <p className="form-note">Group-stage schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p> : <button className="text-action bracket-toggle" type="button" disabled={loading || loadingGroupStage} onClick={toggleGroupStage}>{showGroupStage ? 'Hide group-stage preview' : 'Preview group-stage fixtures'}</button>}
           </>}
           {knockoutRounds.length > 0 && <section aria-label="Knockout bracket preview">
             <p className="form-note">Preview only. Byes go to teams in the listed order.</p>
@@ -448,7 +500,7 @@ function TeamDialog({
             {leagueScheduleMessageTournamentId === tournament.id && leagueScheduleMessage && <p className="form-note" role="status">{leagueScheduleMessage}</p>}
           </section>}
           {groups.length > 0 && <section className="league-schedule" aria-label="Group-stage schedule preview">
-            <p className="form-note">Preview only · teams are balanced across groups in the listed order.</p>
+            <p className="form-note">{hasSavedGroupStage ? 'Saved fixtures · teams are balanced across groups in the listed order.' : 'Preview only · teams are balanced across groups in the listed order.'}</p>
             {groups.map((group) => <details className="league-round" key={group.name}>
               <summary>{group.name}<span>{group.teams.length} teams</span></summary>
               <div className="league-fixtures"><p className="form-note">{group.teams.map((team) => team.name).join(' · ')}</p>
@@ -458,8 +510,13 @@ function TeamDialog({
                 </details>)}
               </div>
             </details>)}
+            {!hasSavedGroupStage && <div className="bracket-save">
+              <button className="button button-primary" type="button" disabled={savingGroupStage} onClick={saveGroupStage}>{savingGroupStage ? 'Saving...' : 'Save group fixtures'} <Icon name="arrow" size={16} /></button>
+            </div>}
+            {groupStageMessageTournamentId === tournament.id && groupStageMessage && <p className="form-note" role="status">{groupStageMessage}</p>}
           </section>}
           {showLeagueSchedule && loadingLeagueSchedule && <p className="form-note" role="status">Checking for a saved schedule...</p>}
+          {showGroupStage && loadingGroupStage && <p className="form-note" role="status">Checking for saved group-stage fixtures...</p>}
           {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">
             <div className="roster-heading"><h3 id="roster-title">{activeTeam.name} roster</h3><button className="roster-action" type="button" onClick={() => setActiveTeam(null)}>All teams</button></div>
             <div className="player-list" aria-live="polite">

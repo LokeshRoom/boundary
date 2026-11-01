@@ -28,7 +28,8 @@
 - [x] Persist a generated round-robin schedule as a public fixture document.
 - [x] Load saved league schedules when the organizer opens the schedule preview.
 - [x] Preview configurable group-stage round-robin schedules.
-- [ ] Persist group-stage fixtures and select playoff qualifiers.
+- [x] Persist and reload generated group-stage fixtures.
+- [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
 - [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.

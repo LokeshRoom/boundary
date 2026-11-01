@@ -1,5 +1,5 @@
 import { getFirebaseFirestore } from './firebase'
-import type { KnockoutRound, RoundRobinRound } from './fixtures'
+import type { GroupStageGroup, KnockoutRound, RoundRobinRound } from './fixtures'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
@@ -152,4 +152,31 @@ export async function getRoundRobinFixtures(tournamentId: string): Promise<Round
   const fixture = snapshot.data()
   if (fixture.format !== 'ROUND_ROBIN' || !Array.isArray(fixture.rounds)) throw new Error('Saved league fixtures have an invalid format.')
   return fixture.rounds as RoundRobinRound[]
+}
+
+export async function saveGroupStageFixtures(tournamentId: string, groups: GroupStageGroup[]) {
+  const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
+  const fixtureRef = doc(firestore, 'tournaments', tournamentId, 'fixtures', 'groups')
+
+  await runTransaction(firestore, async (transaction) => {
+    const currentFixtures = await transaction.get(fixtureRef)
+    if (currentFixtures.exists()) throw new Error('Group-stage fixtures already exist for this tournament.')
+
+    transaction.set(fixtureRef, {
+      format: 'GROUP_STAGE',
+      groups,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  })
+}
+
+export async function getGroupStageFixtures(tournamentId: string): Promise<GroupStageGroup[] | null> {
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'tournaments', tournamentId, 'fixtures', 'groups'))
+  if (!snapshot.exists()) return null
+
+  const fixture = snapshot.data()
+  if (fixture.format !== 'GROUP_STAGE' || !Array.isArray(fixture.groups)) throw new Error('Saved group-stage fixtures have an invalid format.')
+  return fixture.groups as GroupStageGroup[]
 }
