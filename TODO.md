@@ -49,6 +49,7 @@
 - [x] Connect selected-match scoring preview to restore and persist summary and over batches for organizers.
 - [ ] Complete the scoring console with real roster selection and both innings.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
+- [x] Include the dismissal type in batting scorecard figures and display it in the innings scorecard.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
 - [x] Display live batting and bowling figures for the preview innings.
 - [x] Group historical delivery events into over-numbered batches for compact persistence.

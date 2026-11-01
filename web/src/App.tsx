@@ -995,8 +995,8 @@ function App() {
                 <div className="preview-scorecard-scroll">
                   <table>
                     <caption>Batting</caption>
-                    <thead><tr><th scope="col">Batter</th><th scope="col">R</th><th scope="col">B</th><th scope="col">4s</th><th scope="col">6s</th><th scope="col">SR</th></tr></thead>
-                    <tbody>{previewBatters.map((batter) => <tr key={batter.playerId}><th scope="row">{previewLineup.find(({ id }) => id === batter.playerId)?.name}{batter.dismissed ? '' : previewEnds.strikerId === batter.playerId ? '*' : ''}</th><td>{batter.runs}</td><td>{batter.ballsFaced}</td><td>{batter.fours}</td><td>{batter.sixes}</td><td>{batter.strikeRate.toFixed(1)}</td></tr>)}</tbody>
+                    <thead><tr><th scope="col">Batter</th><th scope="col">Dismissal</th><th scope="col">R</th><th scope="col">B</th><th scope="col">4s</th><th scope="col">6s</th><th scope="col">SR</th></tr></thead>
+                    <tbody>{previewBatters.map((batter) => <tr key={batter.playerId}><th scope="row">{previewLineup.find(({ id }) => id === batter.playerId)?.name}{batter.dismissed ? '' : previewEnds.strikerId === batter.playerId ? '*' : ''}</th><td>{batter.dismissalType?.replaceAll('_', ' ') ?? 'not out'}</td><td>{batter.runs}</td><td>{batter.ballsFaced}</td><td>{batter.fours}</td><td>{batter.sixes}</td><td>{batter.strikeRate.toFixed(1)}</td></tr>)}</tbody>
                   </table>
                   <table>
                     <caption>Bowling</caption>

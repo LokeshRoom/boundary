@@ -102,8 +102,8 @@ test('builds batting figures with wides excluded and no-balls faced', () => {
   ], ['batter-1', 'batter-2'])
 
   assert.deepEqual(scorecard, [
-    { playerId: 'batter-1', runs: 6, ballsFaced: 2, fours: 1, sixes: 0, dismissed: true, strikeRate: 300 },
-    { playerId: 'batter-2', runs: 1, ballsFaced: 1, fours: 0, sixes: 0, dismissed: false, strikeRate: 100 },
+    { playerId: 'batter-1', runs: 6, ballsFaced: 2, fours: 1, sixes: 0, dismissed: true, dismissalType: 'RUN_OUT', strikeRate: 300 },
+    { playerId: 'batter-2', runs: 1, ballsFaced: 1, fours: 0, sixes: 0, dismissed: false, dismissalType: null, strikeRate: 100 },
   ])
 })
 

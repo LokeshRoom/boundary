@@ -34,6 +34,7 @@ export type BatterSummary = {
   fours: number
   sixes: number
   dismissed: boolean
+  dismissalType: DismissalType | null
   strikeRate: number
 }
 
@@ -256,7 +257,7 @@ export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openin
 
 export function summarizeBattingScorecard(deliveries: readonly DeliveryEvent[], batterIds: readonly string[]): BatterSummary[] {
   if (new Set(batterIds).size !== batterIds.length || batterIds.some((id) => !id.trim())) throw new Error('Batter IDs must be unique and non-empty.')
-  const batters = new Map(batterIds.map((playerId) => [playerId, { playerId, runs: 0, ballsFaced: 0, fours: 0, sixes: 0, dismissed: false, strikeRate: 0 }]))
+  const batters = new Map(batterIds.map((playerId) => [playerId, { playerId, runs: 0, ballsFaced: 0, fours: 0, sixes: 0, dismissed: false, dismissalType: null as DismissalType | null, strikeRate: 0 }]))
 
   deliveries.forEach((delivery) => {
     validateDelivery(delivery)
@@ -270,6 +271,7 @@ export function summarizeBattingScorecard(deliveries: readonly DeliveryEvent[], 
       const dismissed = batters.get(delivery.dismissedBatterId)
       if (!dismissed) throw new Error('The dismissed batter must be included in the batting lineup.')
       dismissed.dismissed = true
+      dismissed.dismissalType = delivery.dismissalType!
     }
     if (delivery.incomingBatterId && !batters.has(delivery.incomingBatterId)) throw new Error('The incoming batter must be included in the batting lineup.')
   })
