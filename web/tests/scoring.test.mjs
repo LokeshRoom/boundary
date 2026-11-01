@@ -62,6 +62,7 @@ test('records wide penalties and completed runs for totals and strike rotation',
   assert.deepEqual(advanceBattingEnds(ends, wide, 0, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
   assert.deepEqual(advanceBattingEnds(ends, makeWideDelivery('batter-1', 'bowler-1', 5, 0), 0, 6), ends)
   assert.throws(() => makeWideDelivery('batter-1', 'bowler-1', 1, 1), /valid wide/)
+  assert.throws(() => makeWideDelivery('batter-1', 'bowler-1', 100, 99), /valid wide/)
 })
 
 test('formats recent wide and no-ball outcomes without hiding batter runs', () => {

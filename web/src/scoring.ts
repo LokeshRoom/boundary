@@ -185,7 +185,7 @@ export function makeNoBallDelivery(strikerId: string, bowlerId: string, runsOffB
 }
 
 export function makeWideDelivery(strikerId: string, bowlerId: string, extrasRuns: number, completedRuns: number): DeliveryEvent {
-  const validRuns = (completedRuns === 0 && [1, 5].includes(extrasRuns)) || (completedRuns > 0 && extrasRuns === completedRuns + 1)
+  const validRuns = (completedRuns === 0 && [1, 5].includes(extrasRuns)) || (completedRuns > 0 && completedRuns <= 5 && extrasRuns === completedRuns + 1)
   if (!validRuns) throw new Error('Choose a valid wide result.')
   const delivery: DeliveryEvent = {
     strikerId,
