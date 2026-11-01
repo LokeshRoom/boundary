@@ -13,6 +13,7 @@
 - [x] Capture and persist balls-per-over and powerplay settings.
 - [x] Define public approved team/player records and private captain contact records.
 - [x] Let organizers create approved teams with captain contacts stored in private records.
+- [x] Persist approved team counts atomically and restore them when tournaments load.
 - [x] Build organizer authentication and persistent tournament setup.
 - [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
 - [ ] Add public team registration and organizer approval workflow.

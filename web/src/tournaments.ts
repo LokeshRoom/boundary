@@ -52,6 +52,7 @@ export async function saveTournament(ownerUid: string, tournament: Tournament) {
     ...(tournament.endDate ? { endDate: tournament.endDate } : {}),
     venue: tournament.venue,
     registrationOpen: true,
+    teamCount: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -68,7 +69,7 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       id: snapshot.id,
       name: data.name,
       format: formats[data.format] ?? 'Knockout',
-      teams: 0,
+      teams: data.teamCount ?? 0,
       status: statuses[data.status] ?? 'Upcoming',
       note: 'Saved to Firebase',
       overs: data.oversPerInnings,

@@ -31,7 +31,7 @@ export async function listTeams(tournamentId: string): Promise<Team[]> {
 }
 
 export async function createTeam(tournamentId: string, team: NewTeam): Promise<Team> {
-  const { firestore, collection, doc, serverTimestamp, writeBatch } = await getFirebaseFirestore()
+  const { firestore, collection, doc, increment, serverTimestamp, writeBatch } = await getFirebaseFirestore()
   const teamRef = doc(collection(firestore, 'tournaments', tournamentId, 'teams'))
   const batch = writeBatch(firestore)
   const createdAt = serverTimestamp()
@@ -48,6 +48,10 @@ export async function createTeam(tournamentId: string, team: NewTeam): Promise<T
     captainName: team.captainName,
     captainContact: team.captainContact,
     createdAt,
+    updatedAt,
+  })
+  batch.update(doc(firestore, 'tournaments', tournamentId), {
+    teamCount: increment(1),
     updatedAt,
   })
   await batch.commit()

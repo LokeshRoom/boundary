@@ -20,7 +20,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'name', 'format', 'status', 'organizerUid', 'oversPerInnings',
           'registrationOpen', 'createdAt', 'updatedAt', 'startDate', 'endDate', 'venue',
-          'ballsPerOver', 'powerplayOvers'
+          'ballsPerOver', 'powerplayOvers', 'teamCount'
         ])
         && data.name is string
         && data.name.size() > 0
@@ -38,6 +38,11 @@ service cloud.firestore {
         && data.powerplayOvers is int
         && data.powerplayOvers >= 0
         && data.powerplayOvers <= data.oversPerInnings
+        && (!data.keys().hasAny(['teamCount']) || (
+          data.teamCount is int
+          && data.teamCount >= 0
+          && data.teamCount <= 1000
+        ))
         && data.registrationOpen is bool
         && data.startDate is string
         && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')

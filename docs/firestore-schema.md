@@ -17,6 +17,7 @@
 | `endDate` | optional `YYYY-MM-DD` string | Tournament end date; cannot precede the start date |
 | `venue` | string, 1-100 characters | Primary venue |
 | `registrationOpen` | boolean | Whether team registration is open |
+| `teamCount` | integer, 0-1000 | Denormalized count of approved teams; incremented atomically with team creation |
 | `createdAt`, `updatedAt` | Firestore timestamps | Server timestamps; updates must preserve `createdAt` |
 
 The Firestore rules allow public reads, require an authenticated owner for writes, prevent owner reassignment, and reject extra fields. The web client must write `createdAt` and `updatedAt` as `serverTimestamp()` values.
