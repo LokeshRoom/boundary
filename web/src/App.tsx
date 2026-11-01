@@ -2,13 +2,13 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'rea
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateKnockoutRounds, type FixtureEntrant } from './fixtures'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, type Format, type Status, type Tournament } from './tournaments'
+import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
-  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Riverside Ground', startDate: '2026-06-14' },
-  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings', overs: 12, ballsPerOver: 6, powerplayOvers: 4, venue: 'Central Turf', startDate: '2026-05-03' },
-  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Northside Oval', startDate: '2026-03-22' },
+  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', registrationOpen: true, note: '4 spots left', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Riverside Ground', startDate: '2026-06-14' },
+  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', registrationOpen: false, note: '2nd innings', overs: 12, ballsPerOver: 6, powerplayOvers: 4, venue: 'Central Turf', startDate: '2026-05-03' },
+  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', registrationOpen: false, note: 'Winner: Cedar CC', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Northside Oval', startDate: '2026-03-22' },
 ]
 
 const navItems = [
@@ -75,7 +75,7 @@ function TournamentDialog({
     endDateInput.setCustomValidity('')
 
     setSubmitting(true)
-    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', note: 'Preview only', overs, ballsPerOver, powerplayOvers, startDate, endDate: endDate || undefined, venue })
+    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', registrationOpen: true, note: 'Preview only', overs, ballsPerOver, powerplayOvers, startDate, endDate: endDate || undefined, venue })
       .then((saved) => {
         if (!saved) return
         formElement.reset()
@@ -137,11 +137,13 @@ function TeamDialog({
   tournament,
   canManage,
   onTeamAdded,
+  onRegistrationChanged,
 }: {
   dialogRef: RefObject<HTMLDialogElement | null>
   tournament: Tournament | null
   canManage: boolean
   onTeamAdded: (tournamentId: string, teamCount: number) => void
+  onRegistrationChanged: (tournamentId: string, registrationOpen: boolean) => void
 }) {
   const [teams, setTeams] = useState<Team[]>([])
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([])
@@ -156,6 +158,7 @@ function TeamDialog({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [linkCopyMessage, setLinkCopyMessage] = useState('')
+  const [registrationSaving, setRegistrationSaving] = useState(false)
   const loading = Boolean(tournament?.id && teamsTournamentId !== tournament.id)
 
   useEffect(() => {
@@ -246,6 +249,18 @@ function TeamDialog({
     }).finally(() => setSubmitting(false))
   }
 
+  function toggleRegistration() {
+    if (!tournament?.id || !canManage || !['Registration open', 'Registration closed'].includes(tournament.status)) return
+    const registrationOpen = !tournament.registrationOpen
+    setRegistrationSaving(true)
+    setError('')
+    void updateTournamentRegistration(tournament.id, registrationOpen).then(() => {
+      onRegistrationChanged(tournament.id!, registrationOpen)
+    }).catch(() => {
+      setError('Could not update registration. Check your Firestore connection and rules.')
+    }).finally(() => setRegistrationSaving(false))
+  }
+
   function copyRegistrationLink() {
     if (!tournament?.id) return
     const link = `${window.location.origin}/t/${tournament.id}/register`
@@ -315,6 +330,7 @@ function TeamDialog({
           <label className="field-label" htmlFor="registration-link">Public registration link</label>
           <div className="registration-link-row"><input id="registration-link" readOnly value={`${window.location.origin}/t/${tournament.id}/register`} /><button className="roster-action" type="button" onClick={copyRegistrationLink}>Copy</button></div>
           {linkCopyMessage && <p className="form-note" role="status">{linkCopyMessage}</p>}
+          {['Registration open', 'Registration closed'].includes(tournament.status) && <button className="roster-action" type="button" disabled={registrationSaving} onClick={toggleRegistration}>{registrationSaving ? 'Saving...' : tournament.registrationOpen ? 'Close registration' : 'Open registration'}</button>}
         </div>}
         {!tournament?.id || !canManage ? <p className="form-note">Save this tournament and sign in as its organizer to manage teams.</p> : <>
           <section className="pending-registrations" aria-labelledby="pending-registrations-title">
@@ -498,6 +514,12 @@ function App() {
     setTournaments((current) => current.map((tournament) => tournament.id === tournamentId ? { ...tournament, teams: teamCount } : tournament))
   }
 
+  function updateRegistrationState(tournamentId: string, registrationOpen: boolean) {
+    const status = registrationOpen ? 'Registration open' : 'Registration closed'
+    setTournaments((current) => current.map((tournament) => tournament.id === tournamentId ? { ...tournament, registrationOpen, status } : tournament))
+    setSelectedTournament((current) => current?.id === tournamentId ? { ...current, registrationOpen, status } : current)
+  }
+
   return (
     <div className="app-frame" id="overview">
       <aside className="sidebar" aria-label="Main navigation">
@@ -612,7 +634,7 @@ function App() {
         </div>
       </main>
       <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} canSave={Boolean(organizerUid)} />
-      <TeamDialog dialogRef={teamDialogRef} tournament={selectedTournament} canManage={Boolean(organizerUid && selectedTournament?.id)} onTeamAdded={updateTeamCount} />
+      <TeamDialog dialogRef={teamDialogRef} tournament={selectedTournament} canManage={Boolean(organizerUid && selectedTournament?.id)} onTeamAdded={updateTeamCount} onRegistrationChanged={updateRegistrationState} />
     </div>
   )
 }

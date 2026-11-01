@@ -49,6 +49,6 @@ export async function getFirebaseFirestore() {
   const app = await getFirebaseApp()
   await initializeFirebaseAppCheck(app)
   const firestoreSdk = await import('firebase/firestore')
-  const { addDoc, collection, doc, getDoc, getDocs, getFirestore, increment, query, runTransaction, serverTimestamp, setDoc, where, writeBatch } = firestoreSdk
-  return { firestore: getFirestore(app), addDoc, collection, doc, getDoc, getDocs, getFirestore, increment, query, runTransaction, serverTimestamp, setDoc, where, writeBatch }
+  const { addDoc, collection, doc, getDoc, getDocs, getFirestore, increment, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } = firestoreSdk
+  return { firestore: getFirestore(app), addDoc, collection, doc, getDoc, getDocs, getFirestore, increment, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch }
 }

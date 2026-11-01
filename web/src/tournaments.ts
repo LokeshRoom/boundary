@@ -2,7 +2,7 @@ import { getFirebaseFirestore } from './firebase'
 import type { KnockoutRound } from './fixtures'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
-export type Status = 'Registration open' | 'Upcoming' | 'Live' | 'Completed'
+export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
 
 export type Tournament = {
   id?: string
@@ -10,6 +10,7 @@ export type Tournament = {
   format: Format
   teams: number
   status: Status
+  registrationOpen: boolean
   note: string
   overs: number
   ballsPerOver: number
@@ -58,7 +59,7 @@ export async function saveTournament(ownerUid: string, tournament: Tournament) {
     startDate: tournament.startDate,
     ...(tournament.endDate ? { endDate: tournament.endDate } : {}),
     venue: tournament.venue,
-    registrationOpen: true,
+    registrationOpen: tournament.registrationOpen,
     teamCount: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -77,7 +78,8 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       name: data.name,
       format: formats[data.format] ?? 'Knockout',
       teams: data.teamCount ?? 0,
-      status: statuses[data.status] ?? 'Upcoming',
+      status: data.status === 'REGISTRATION' && data.registrationOpen === false ? 'Registration closed' : statuses[data.status] ?? 'Upcoming',
+      registrationOpen: data.registrationOpen === true,
       note: 'Saved to Firebase',
       overs: data.oversPerInnings,
       ballsPerOver: data.ballsPerOver,
@@ -87,6 +89,11 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       venue: data.venue,
     }
   })
+}
+
+export async function updateTournamentRegistration(tournamentId: string, registrationOpen: boolean) {
+  const { firestore, doc, serverTimestamp, updateDoc } = await getFirebaseFirestore()
+  await updateDoc(doc(firestore, 'tournaments', tournamentId), { registrationOpen, updatedAt: serverTimestamp() })
 }
 
 export async function getRegistrationTournament(tournamentId: string): Promise<RegistrationTournament | null> {

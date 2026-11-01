@@ -20,7 +20,7 @@
 - [x] Show pending public team registrations and private captain details to the organizer.
 - [x] Approve pending public registrations into public teams and rosters with private captain contacts.
 - [x] Reject pending registrations and remove their private roster records.
-- [ ] Control whether tournament registration is open.
+- [x] Let the organizer open or close tournament registration and persist the setting.
 - [x] Add organizer roster entry for player name, jersey number, and role.
 - [x] Preview knockout rounds with automatic byes and winner placeholders.
 - [x] Persist the generated knockout bracket as a public, organizer-created fixture document.
