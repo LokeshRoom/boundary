@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
-import { getBattingEndsAfter, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
+import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { getGroupStageFixtures, getKnockoutFixtures, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
+import { getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
@@ -39,6 +39,16 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 
 function StatusPill({ status }: { status: Status }) {
   return <span className={`status-pill status-${status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>
+}
+
+function sameInningsSummary(left: ReturnType<typeof summarizeInnings>, right: ReturnType<typeof summarizeInnings>) {
+  return left.runs === right.runs
+    && left.wickets === right.wickets
+    && left.legalBalls === right.legalBalls
+    && left.overs === right.overs
+    && left.runRate === right.runRate
+    && left.runsOffBat === right.runsOffBat
+    && Object.keys(left.extras).every((type) => left.extras[type as keyof typeof left.extras] === right.extras[type as keyof typeof right.extras])
 }
 
 function TournamentDialog({
@@ -607,7 +617,9 @@ function TeamDialog({
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
   const [previewDeliveries, setPreviewDeliveries] = useState<DeliveryEvent[]>([])
-  const [previewMatch, setPreviewMatch] = useState<{ tournamentName: string; fixture: PlayableFixture } | null>(null)
+  const [previewMatch, setPreviewMatch] = useState<{ tournamentId?: string; tournamentName: string; ballsPerOver: number; fixture: PlayableFixture } | null>(null)
+  const [loadedMatchKey, setLoadedMatchKey] = useState<string | null>(null)
+  const [scoreSaveStatus, setScoreSaveStatus] = useState('')
   const [organizer, setOrganizer] = useState<string | null>(null)
   const [organizerUid, setOrganizerUid] = useState<string | null>(null)
   const [loadedOrganizerUid, setLoadedOrganizerUid] = useState<string | null>(null)
@@ -617,6 +629,8 @@ function App() {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const teamDialogRef = useRef<HTMLDialogElement>(null)
+  const lastPersistedMatchRef = useRef<{ key: string; deliveries: string; overCount: number } | null>(null)
+  const scoreSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     if (!isFirebaseConfigured) return
@@ -627,6 +641,8 @@ function App() {
       if (!active) return
       unsubscribe = onAuthStateChanged(auth, (user) => {
         setOrganizer(user?.displayName || user?.email || null)
+        setLoadedMatchKey(null)
+        setScoreSaveStatus('')
         setOrganizerUid(user?.uid ?? null)
         setAuthReady(true)
       })
@@ -663,9 +679,40 @@ function App() {
     return () => { active = false }
   }, [organizerUid])
 
+  const previewMatchKey = previewMatch?.tournamentId ? `${previewMatch.tournamentId}_${previewMatch.fixture.id}` : null
+  const currentPreviewScoreRef = useRef<{ key: string | null; deliveries: string } | null>(null)
+
+  useEffect(() => {
+    const match = previewMatch
+    if (!previewMatchKey || !match?.tournamentId || !organizerUid) return
+
+    let active = true
+    const load = scoreSaveQueueRef.current.then(() => Promise.all([
+      getOverDeliveryBatches(match.tournamentId!, match.fixture, match.ballsPerOver),
+      getLiveMatchSnapshot(match.tournamentId!, match.fixture),
+    ]))
+    void load.then(([batches, snapshot]) => {
+      if (!active) return
+      const deliveries = flattenOverBatches(batches, match.ballsPerOver)
+      if (snapshot && !sameInningsSummary(snapshot.scoreSummary, buildLiveMatchSnapshot(deliveries, match.ballsPerOver).scoreSummary)) {
+        throw new Error('Saved score does not match its delivery history.')
+      }
+      lastPersistedMatchRef.current = { key: previewMatchKey, deliveries: snapshot ? JSON.stringify(deliveries) : '', overCount: batches.length }
+      currentPreviewScoreRef.current = { key: previewMatchKey, deliveries: JSON.stringify(deliveries) }
+      setPreviewDeliveries(deliveries)
+      setLoadedMatchKey(previewMatchKey)
+      setScoreSaveStatus('Saved score loaded')
+    }).catch(() => {
+      if (active) setScoreSaveStatus('Could not load saved score. Check Firestore rules and connection.')
+    })
+
+    return () => { active = false }
+  }, [organizerUid, previewMatch, previewMatchKey])
+
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
   const visibleTournaments = organizerUid ? tournaments : initialTournaments
-  const previewScore = summarizeInnings(previewDeliveries, 6)
+  const previewBallsPerOver = previewMatch?.ballsPerOver ?? 6
+  const previewScore = summarizeInnings(previewDeliveries, previewBallsPerOver)
   const previewTeamA = previewMatch?.fixture.teamA
   const previewTeamB = previewMatch?.fixture.teamB
   const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
@@ -675,7 +722,7 @@ function App() {
     { id: 'preview-batter-c', name: 'S. Khan' },
     { id: 'preview-batter-d', name: 'A. Reed' },
   ]
-  const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, 6)
+  const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, previewBallsPerOver)
   const previewBatters = summarizeBattingScorecard(previewDeliveries, previewLineup.map(({ id }) => id))
   const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
   const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
@@ -683,9 +730,48 @@ function App() {
   const previewIncoming = previewLineup.find(({ id }) => id !== previewEnds.strikerId && id !== previewEnds.nonStrikerId && !previewDismissed.has(id))
   const previewInningsOver = previewScore.wickets >= previewLineup.length - 1
   const previewCanRecordWicket = !previewInningsOver && (Boolean(previewIncoming) || previewScore.wickets === previewLineup.length - 2)
+  const previewMatchLoading = Boolean(organizerUid && previewMatchKey && loadedMatchKey !== previewMatchKey)
+
+  useEffect(() => {
+    if (!previewMatch?.tournamentId || !previewMatchKey || !organizerUid || loadedMatchKey !== previewMatchKey) return
+    const deliveries = previewDeliveries
+    const deliveriesJson = JSON.stringify(deliveries)
+    const savedMatch = lastPersistedMatchRef.current
+    if (savedMatch?.key === previewMatchKey && savedMatch.deliveries === deliveriesJson) return
+
+    const batches = groupDeliveriesByOver(deliveries, previewMatch.ballsPerOver)
+    setScoreSaveStatus('Saving score...')
+    const save = scoreSaveQueueRef.current.then(async () => {
+      await saveLiveMatchSnapshot(previewMatch.tournamentId!, previewMatch.fixture, buildLiveMatchSnapshot(deliveries, previewMatch.ballsPerOver))
+      const previousOverCount = lastPersistedMatchRef.current?.key === previewMatchKey ? lastPersistedMatchRef.current.overCount : 0
+      const currentOverCount = batches.length
+      if (currentOverCount > 0) {
+        const lastOver = batches[currentOverCount - 1]
+        await saveOverDeliveryBatch(previewMatch.tournamentId!, previewMatch.fixture, lastOver.overNumber, lastOver.deliveries, previewMatch.ballsPerOver)
+      }
+      for (let overNumber = previousOverCount; overNumber > currentOverCount; overNumber -= 1) {
+        await saveOverDeliveryBatch(previewMatch.tournamentId!, previewMatch.fixture, overNumber, null, previewMatch.ballsPerOver)
+      }
+      lastPersistedMatchRef.current = { key: previewMatchKey, deliveries: deliveriesJson, overCount: currentOverCount }
+    })
+    scoreSaveQueueRef.current = save.catch(() => {})
+    void save.then(() => {
+      if (currentPreviewScoreRef.current?.key === previewMatchKey && currentPreviewScoreRef.current.deliveries === deliveriesJson) setScoreSaveStatus('Score saved')
+    }).catch(() => {
+      if (currentPreviewScoreRef.current?.key === previewMatchKey) setScoreSaveStatus('Could not save score. Check Firestore rules and connection.')
+    })
+  }, [loadedMatchKey, organizerUid, previewDeliveries, previewMatch, previewMatchKey])
 
   function recordPreviewDelivery(delivery: DeliveryEvent) {
-    setPreviewDeliveries((current) => [...current, delivery])
+    const next = [...previewDeliveries, delivery]
+    currentPreviewScoreRef.current = { key: previewMatchKey, deliveries: JSON.stringify(next) }
+    setPreviewDeliveries(next)
+  }
+
+  function undoPreviewDelivery() {
+    const next = undoLastDelivery(previewDeliveries)
+    currentPreviewScoreRef.current = { key: previewMatchKey, deliveries: JSON.stringify(next) }
+    setPreviewDeliveries(next)
   }
 
   function recordPreviewRuns(runsOffBat: number) {
@@ -835,13 +921,13 @@ function App() {
               </div>
               <div className="scoring-preview" aria-label="Sample scoring controls">
                 <span>ADD DELIVERY</span>
-                <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
-                  <button className="score-key score-key-extra" type="button" disabled={previewInningsOver} onClick={() => recordPreviewExtra('WIDE')}>WD</button>
-                  <button className="score-key score-key-extra" type="button" disabled={previewInningsOver} onClick={() => recordPreviewExtra('NO_BALL')}>NB</button>
-                  <button className="score-key score-key-extra" type="button" disabled={!previewCanRecordWicket} onClick={recordPreviewWicket}>Wicket</button>
-                  <button className="score-key score-key-undo" type="button" disabled={!previewDeliveries.length} onClick={() => setPreviewDeliveries((current) => undoLastDelivery(current))}>Undo last</button>
+                <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver || previewMatchLoading} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
+                  <button className="score-key score-key-extra" type="button" disabled={previewInningsOver || previewMatchLoading} onClick={() => recordPreviewExtra('WIDE')}>WD</button>
+                  <button className="score-key score-key-extra" type="button" disabled={previewInningsOver || previewMatchLoading} onClick={() => recordPreviewExtra('NO_BALL')}>NB</button>
+                  <button className="score-key score-key-extra" type="button" disabled={!previewCanRecordWicket || previewMatchLoading} onClick={recordPreviewWicket}>Wicket</button>
+                  <button className="score-key score-key-undo" type="button" disabled={!previewDeliveries.length || previewMatchLoading} onClick={undoPreviewDelivery}>Undo last</button>
                 </div>
-                <small>{previewInningsOver ? 'Sample innings complete' : 'Preview only · score resets when the page reloads.'}</small>
+                <small role={scoreSaveStatus || previewMatchLoading ? 'status' : undefined}>{scoreSaveStatus || (previewMatchLoading ? 'Loading saved score...' : previewInningsOver ? 'Sample innings complete' : previewMatchKey && organizerUid ? 'Score syncs to Firebase as you enter deliveries.' : 'Preview only · score resets when the page reloads.')}</small>
               </div>
             </article>
 
@@ -885,7 +971,12 @@ function App() {
       </main>
       <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} canSave={Boolean(organizerUid)} />
       <TeamDialog dialogRef={teamDialogRef} tournament={selectedTournament} canManage={Boolean(organizerUid && selectedTournament?.id)} onTeamAdded={updateTeamCount} onRegistrationChanged={updateRegistrationState} onSelectFixture={(fixture, tournament) => {
-        setPreviewMatch({ tournamentName: tournament.name, fixture })
+        const tournamentId = tournament.id
+        const matchKey = tournamentId ? `${tournamentId}_${fixture.id}` : null
+        setLoadedMatchKey(null)
+        setScoreSaveStatus(tournamentId && organizerUid ? 'Loading saved score...' : '')
+        currentPreviewScoreRef.current = { key: matchKey, deliveries: JSON.stringify([]) }
+        setPreviewMatch({ tournamentId, tournamentName: tournament.name, ballsPerOver: tournament.ballsPerOver, fixture })
         setPreviewDeliveries([])
       }} />
     </div>

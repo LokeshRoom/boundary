@@ -36,7 +36,8 @@
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [x] Detect innings completion at the overs limit or when all but one batter are out.
 - [x] Add a local-only scoring preview with run, wide, no-ball, wicket and replacement batter, recent-ball, undo, and batter-strike rotation controls.
-- [ ] Build the organizer scoring console around a selected match and persist match/over state.
+- [x] Connect selected-match scoring preview to restore and persist summary and over batches for organizers.
+- [ ] Complete the scoring console with real roster selection and both innings.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
 - [x] Group historical delivery events into over-numbered batches for compact persistence.
@@ -45,7 +46,6 @@
 - [x] Add save/load functions for bounded live match summary documents.
 - [ ] Emulator-test public live match reads and organizer-only match writes.
 - [x] Add save/load functions and owner-only rules for historical over batches.
-- [ ] Connect selected-match scoring to restore and persist summary and over batches together.
 - [ ] Emulator-test public live match and over reads with organizer-only writes.
 - [x] Compose complete innings scorecards from innings, batting, and bowling summaries.
 - [ ] Publish full scorecards for completed and live matches.
