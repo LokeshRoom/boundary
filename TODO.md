@@ -17,7 +17,8 @@
 - [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
 - [ ] Add public team registration and organizer approval workflow.
 - [x] Add organizer roster entry for player name, jersey number, and role.
-- [ ] Generate knockout, round-robin, and group-stage fixtures.
+- [x] Preview knockout rounds with automatic byes and winner placeholders.
+- [ ] Persist knockout fixtures and generate round-robin and group-stage schedules.
 - [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.

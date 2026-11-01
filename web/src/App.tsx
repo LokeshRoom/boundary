@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
+import { generateKnockoutRounds, type FixtureEntrant } from './fixtures'
 import { addPlayer, createTeam, listPlayers, listTeams, type NewPlayer, type NewTeam, type Player, type PlayerRole, type Team } from './teams'
 import { listOwnedTournaments, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -147,6 +148,7 @@ function TeamDialog({
   const [activeTeam, setActiveTeam] = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
+  const [bracketTournamentId, setBracketTournamentId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const loading = Boolean(tournament?.id && teamsTournamentId !== tournament.id)
@@ -232,6 +234,15 @@ function TeamDialog({
     }).finally(() => setSubmitting(false))
   }
 
+  function entrantLabel(entrant: FixtureEntrant) {
+    return entrant.type === 'team' ? entrant.team.name : `Winner of match ${entrant.matchNumber}`
+  }
+
+  const showBracket = bracketTournamentId === tournament?.id
+  const knockoutRounds = showBracket && !loading && tournament?.format === 'Knockout' && teams.length >= 2
+    ? generateKnockoutRounds(teams)
+    : []
+
   return (
     <dialog className="create-dialog" ref={dialogRef} aria-labelledby="teams-title">
       <div className="dialog-form">
@@ -243,6 +254,19 @@ function TeamDialog({
           <div className="team-list" aria-live="polite">
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>
+          {tournament?.format === 'Knockout' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2} onClick={() => setBracketTournamentId(showBracket ? null : tournament.id ?? null)}>{showBracket ? 'Hide bracket preview' : 'Preview knockout bracket'}</button>}
+          {knockoutRounds.length > 0 && <section aria-label="Knockout bracket preview">
+            <p className="form-note">Preview only. Byes go to teams in the listed order.</p>
+            <div className="bracket-preview">
+            {knockoutRounds.map((round) => <div className="bracket-round" key={round.name}>
+              <h3>{round.name}</h3>
+              {round.matches.map((match) => <div className="bracket-match" key={match.number}>
+                <span>{entrantLabel(match.teamA)}</span>
+                {match.bye ? <small>Bye - advances</small> : <span>{match.teamB ? entrantLabel(match.teamB) : ''}</span>}
+              </div>)}
+            </div>)}
+            </div>
+          </section>}
           {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">
             <div className="roster-heading"><h3 id="roster-title">{activeTeam.name} roster</h3><button className="roster-action" type="button" onClick={() => setActiveTeam(null)}>All teams</button></div>
             <div className="player-list" aria-live="polite">
