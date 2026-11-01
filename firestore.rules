@@ -104,6 +104,60 @@ service cloud.firestore {
             && data.groups.size() <= 32));
     }
 
+    function validMatchTeam(data) {
+      return data is map
+        && data.keys().hasAll(['id', 'name'])
+        && data.keys().hasOnly(['id', 'name'])
+        && data.id is string
+        && data.id.size() > 0
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60;
+    }
+
+    function validLiveMatch(data) {
+      return data.keys().hasAll([
+          'tournamentId', 'fixtureId', 'stage', 'roundName', 'matchNumber',
+          'teamA', 'teamB', 'currentInnings', 'scoreSummary', 'recentBalls',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'tournamentId', 'fixtureId', 'stage', 'roundName', 'groupName', 'matchNumber',
+          'teamA', 'teamB', 'currentInnings', 'scoreSummary', 'recentBalls',
+          'createdAt', 'updatedAt'
+        ])
+        && data.tournamentId is string
+        && data.fixtureId is string
+        && data.stage in ['KNOCKOUT', 'LEAGUE', 'GROUP']
+        && data.roundName is string
+        && data.roundName.size() > 0
+        && data.roundName.size() <= 40
+        && (!('groupName' in data) || (data.groupName is string && data.groupName.size() <= 40))
+        && data.matchNumber is int
+        && data.matchNumber > 0
+        && validMatchTeam(data.teamA)
+        && validMatchTeam(data.teamB)
+        && data.currentInnings in [1, 2]
+        && data.scoreSummary is map
+        && data.scoreSummary.keys().hasAll(['runs', 'wickets', 'legalBalls', 'overs', 'runRate', 'runsOffBat', 'extras'])
+        && data.scoreSummary.keys().hasOnly(['runs', 'wickets', 'legalBalls', 'overs', 'runRate', 'runsOffBat', 'extras'])
+        && data.scoreSummary.runs is int
+        && data.scoreSummary.runs >= 0
+        && data.scoreSummary.wickets is int
+        && data.scoreSummary.wickets >= 0
+        && data.scoreSummary.legalBalls is int
+        && data.scoreSummary.legalBalls >= 0
+        && data.scoreSummary.overs is string
+        && data.scoreSummary.runRate is number
+        && data.scoreSummary.runsOffBat is int
+        && data.scoreSummary.extras is map
+        && data.scoreSummary.extras.keys().hasOnly(['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY'])
+        && data.recentBalls is list
+        && data.recentBalls.size() <= 18
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function validPrivateRegistration(data) {
       return data.keys().hasAll(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
@@ -143,6 +197,27 @@ service cloud.firestore {
         && data.captainContact.size() <= 120
         && data.submittedAt is timestamp
         && data.submittedAt == request.time;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create: if ownsTournament(request.resource.data.tournamentId)
+        && validLiveMatch(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if ownsTournament(resource.data.tournamentId)
+        && validLiveMatch(request.resource.data)
+        && request.resource.data.tournamentId == resource.data.tournamentId
+        && request.resource.data.fixtureId == resource.data.fixtureId
+        && request.resource.data.stage == resource.data.stage
+        && request.resource.data.roundName == resource.data.roundName
+        && request.resource.data.get('groupName', '') == resource.data.get('groupName', '')
+        && request.resource.data.matchNumber == resource.data.matchNumber
+        && request.resource.data.teamA == resource.data.teamA
+        && request.resource.data.teamB == resource.data.teamB
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsTournament(resource.data.tournamentId);
     }
 
     match /tournaments/{tournamentId} {

@@ -42,7 +42,9 @@
 - [x] Group historical delivery events into over-numbered batches for compact persistence.
 - [x] Restore delivery order from validated over batches.
 - [x] Build bounded live match snapshots with full totals and the latest 18 deliveries.
-- [ ] Persist current match summaries and historical over batches with organizer-only writes.
+- [x] Add save/load functions for bounded live match summary documents.
+- [ ] Emulator-test public live match reads and organizer-only match writes.
+- [ ] Persist historical delivery over batches with public reads and organizer-only writes.
 - [x] Compose complete innings scorecards from innings, batting, and bowling summaries.
 - [ ] Publish full scorecards for completed and live matches.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.

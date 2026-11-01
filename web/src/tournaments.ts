@@ -1,5 +1,6 @@
 import { getFirebaseFirestore } from './firebase'
-import type { GroupStageGroup, KnockoutRound, RoundRobinRound } from './fixtures'
+import type { GroupStageGroup, KnockoutRound, PlayableFixture, RoundRobinRound } from './fixtures'
+import type { LiveMatchSnapshot } from './scoring'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
@@ -25,6 +26,54 @@ export type RegistrationTournament = {
   venue: string
   startDate: string
   isOpen: boolean
+}
+
+function liveMatchDocumentId(tournamentId: string, fixtureId: string) {
+  return `${tournamentId}_${fixtureId}`
+}
+
+export async function saveLiveMatchSnapshot(tournamentId: string, fixture: PlayableFixture, snapshot: LiveMatchSnapshot) {
+  const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
+  const matchRef = doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id))
+
+  await runTransaction(firestore, async (transaction) => {
+    const currentMatch = await transaction.get(matchRef)
+    const updated = {
+      tournamentId,
+      fixtureId: fixture.id,
+      stage: fixture.stage,
+      roundName: fixture.roundName,
+      ...(fixture.groupName ? { groupName: fixture.groupName } : {}),
+      matchNumber: fixture.matchNumber,
+      teamA: fixture.teamA,
+      teamB: fixture.teamB,
+      currentInnings: snapshot.currentInnings,
+      scoreSummary: snapshot.scoreSummary,
+      recentBalls: snapshot.recentBalls,
+      updatedAt: serverTimestamp(),
+    }
+    if (currentMatch.exists()) {
+      transaction.update(matchRef, updated)
+    } else {
+      transaction.set(matchRef, { ...updated, createdAt: serverTimestamp() })
+    }
+  })
+}
+
+export async function getLiveMatchSnapshot(tournamentId: string, fixture: PlayableFixture): Promise<LiveMatchSnapshot | null> {
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id)))
+  if (!snapshot.exists()) return null
+
+  const match = snapshot.data()
+  if (match.tournamentId !== tournamentId || match.fixtureId !== fixture.id || (match.currentInnings !== 1 && match.currentInnings !== 2) || !Array.isArray(match.recentBalls) || match.recentBalls.length > 18 || !match.scoreSummary || typeof match.scoreSummary !== 'object') {
+    throw new Error('Saved live match data is invalid.')
+  }
+  return {
+    currentInnings: match.currentInnings,
+    scoreSummary: match.scoreSummary as LiveMatchSnapshot['scoreSummary'],
+    recentBalls: match.recentBalls as LiveMatchSnapshot['recentBalls'],
+  }
 }
 
 const firestoreFormats = {

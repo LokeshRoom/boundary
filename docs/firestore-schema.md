@@ -43,3 +43,7 @@ Public registration also requires a reCAPTCHA v3 App Check site key in `VITE_FIR
 `tournaments/{tournamentId}/fixtures/league` stores a single round-robin schedule as rounds with team pairings and byes. It supports up to 64 teams so the schedule stays bounded within one Firestore document. It is public-readable and organizer-created. The client uses a transaction to prevent replacement if the fixture already exists; the saved schedule is not editable yet.
 
 `tournaments/{tournamentId}/fixtures/groups` stores a `GROUP_STAGE` schedule with a `groups` array. Each group has a name, team snapshots, and its round-robin rounds. It supports a combined maximum of 64 teams and is public-readable and organizer-created. The client uses a transaction to prevent replacement if the fixture already exists.
+
+## Live match summary
+
+`matches/{tournamentId}_{fixtureId}` stores the public summary for one scheduled match: fixture identity and team snapshots, current innings, the complete current innings summary, and at most the latest 18 delivery events. Public viewers can read this bounded document; only the tournament organizer can create or update it. Updates cannot change the fixture identity, teams, or creation timestamp. Full delivery history remains separate and is not persisted yet.
