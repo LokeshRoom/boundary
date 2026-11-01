@@ -40,6 +40,7 @@
 - [ ] Complete the scoring console with real roster selection and both innings.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
+- [x] Display live batting and bowling figures for the preview innings.
 - [x] Group historical delivery events into over-numbered batches for compact persistence.
 - [x] Restore delivery order from validated over batches.
 - [x] Build bounded live match snapshots with full totals and the latest 18 deliveries.

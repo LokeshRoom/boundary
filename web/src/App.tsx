@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
-import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
+import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -725,6 +725,7 @@ function App() {
   ]
   const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, previewBallsPerOver)
   const previewBatters = summarizeBattingScorecard(previewDeliveries, previewLineup.map(({ id }) => id))
+  const previewBowlers = summarizeBowlingScorecard(previewDeliveries, ['preview-bowler'], previewBallsPerOver)
   const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
   const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
   const previewDismissed = new Set(previewBatters.filter((batter) => batter.dismissed).map((batter) => batter.playerId))
@@ -920,6 +921,21 @@ function App() {
               <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.isWicket ? 'wicket' : delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
                 <span>RECENT BALLS</span>{previewDeliveries.slice(-8).length ? previewDeliveries.slice(-8).map((delivery, index) => <b className={delivery.isWicket ? 'ball-wicket' : delivery.extrasType ? 'ball-extra' : delivery.runsOffBat === 4 || delivery.runsOffBat === 6 ? 'ball-boundary' : delivery.runsOffBat === 0 ? 'ball-dot' : undefined} key={`${previewDeliveries.length}-${index}`}>{delivery.isWicket ? 'W' : delivery.extrasType === 'WIDE' ? 'WD' : delivery.extrasType === 'NO_BALL' ? 'NB' : delivery.runsOffBat || '·'}</b>) : <small>No deliveries yet</small>}
               </div>
+              <details className="preview-scorecard">
+                <summary><span>INNINGS SCORECARD</span><strong>{previewScore.runs}/{previewScore.wickets} <small>· {previewScore.overs} ov</small></strong></summary>
+                <div className="preview-scorecard-scroll">
+                  <table>
+                    <caption>Batting</caption>
+                    <thead><tr><th scope="col">Batter</th><th scope="col">R</th><th scope="col">B</th><th scope="col">4s</th><th scope="col">6s</th><th scope="col">SR</th></tr></thead>
+                    <tbody>{previewBatters.map((batter) => <tr key={batter.playerId}><th scope="row">{previewLineup.find(({ id }) => id === batter.playerId)?.name}{batter.dismissed ? '' : previewEnds.strikerId === batter.playerId ? '*' : ''}</th><td>{batter.runs}</td><td>{batter.ballsFaced}</td><td>{batter.fours}</td><td>{batter.sixes}</td><td>{batter.strikeRate.toFixed(1)}</td></tr>)}</tbody>
+                  </table>
+                  <table>
+                    <caption>Bowling</caption>
+                    <thead><tr><th scope="col">Bowler</th><th scope="col">O</th><th scope="col">R</th><th scope="col">W</th><th scope="col">Econ</th></tr></thead>
+                    <tbody>{previewBowlers.map((bowler) => <tr key={bowler.playerId}><th scope="row">L. Morris</th><td>{bowler.overs}</td><td>{bowler.runsConceded}</td><td>{bowler.wickets}</td><td>{bowler.economy.toFixed(1)}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              </details>
               <div className="scoring-preview" aria-label="Sample scoring controls">
                 <span>ADD DELIVERY</span>
                 <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver || previewMatchLoading} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
