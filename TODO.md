@@ -34,6 +34,8 @@
 - [ ] Build the organizer ball-by-ball scoring console and persist match/over state.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
+- [x] Group historical delivery events into over-numbered batches for compact persistence.
+- [ ] Persist current match summaries and historical over batches with organizer-only writes.
 - [ ] Combine batting and bowling figures into full scorecards and publish them.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.

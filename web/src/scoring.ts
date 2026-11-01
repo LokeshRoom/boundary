@@ -42,6 +42,11 @@ export type BowlerSummary = {
   economy: number
 }
 
+export type OverDeliveryBatch = {
+  overNumber: number
+  deliveries: DeliveryEvent[]
+}
+
 const extrasTypes: ExtrasType[] = ['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY']
 
 function validateDelivery(delivery: DeliveryEvent) {
@@ -134,4 +139,21 @@ export function summarizeInnings(deliveries: readonly DeliveryEvent[], ballsPerO
 
 export function undoLastDelivery(deliveries: readonly DeliveryEvent[]): DeliveryEvent[] {
   return deliveries.slice(0, -1)
+}
+
+export function groupDeliveriesByOver(deliveries: readonly DeliveryEvent[], ballsPerOver: number): OverDeliveryBatch[] {
+  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  let legalBalls = 0
+  const overs: OverDeliveryBatch[] = []
+
+  deliveries.forEach((delivery) => {
+    validateDelivery(delivery)
+    const overNumber = Math.floor(legalBalls / ballsPerOver) + 1
+    const currentOver = overs.at(-1)
+    if (currentOver?.overNumber !== overNumber) overs.push({ overNumber, deliveries: [] })
+    overs.at(-1)!.deliveries.push(delivery)
+    legalBalls += Number(delivery.legalBall)
+  })
+
+  return overs
 }
