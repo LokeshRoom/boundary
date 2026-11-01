@@ -47,6 +47,7 @@
 - [x] Validate saved live snapshot totals and recent delivery events before restoring.
 - [x] Add save/load functions for bounded live match summary documents.
 - [ ] Emulator-test public live match reads and organizer-only match writes.
+- [x] Require complete, non-negative extras and consistent total runs in match summary rules.
 - [x] Add save/load functions and owner-only rules for historical over batches.
 - [ ] Emulator-test public live match and over reads with organizer-only writes.
 - [x] Compose complete innings scorecards from innings, batting, and bowling summaries.

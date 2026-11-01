@@ -150,8 +150,26 @@ service cloud.firestore {
         && data.scoreSummary.overs is string
         && data.scoreSummary.runRate is number
         && data.scoreSummary.runsOffBat is int
+        && data.scoreSummary.runsOffBat >= 0
         && data.scoreSummary.extras is map
+        && data.scoreSummary.extras.keys().hasAll(['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY'])
         && data.scoreSummary.extras.keys().hasOnly(['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY'])
+        && data.scoreSummary.extras.WIDE is int
+        && data.scoreSummary.extras.WIDE >= 0
+        && data.scoreSummary.extras.NO_BALL is int
+        && data.scoreSummary.extras.NO_BALL >= 0
+        && data.scoreSummary.extras.BYE is int
+        && data.scoreSummary.extras.BYE >= 0
+        && data.scoreSummary.extras.LEG_BYE is int
+        && data.scoreSummary.extras.LEG_BYE >= 0
+        && data.scoreSummary.extras.PENALTY is int
+        && data.scoreSummary.extras.PENALTY >= 0
+        && data.scoreSummary.runs == data.scoreSummary.runsOffBat
+          + data.scoreSummary.extras.WIDE
+          + data.scoreSummary.extras.NO_BALL
+          + data.scoreSummary.extras.BYE
+          + data.scoreSummary.extras.LEG_BYE
+          + data.scoreSummary.extras.PENALTY
         && data.recentBalls is list
         && data.recentBalls.size() <= 18
         && data.createdAt is timestamp
