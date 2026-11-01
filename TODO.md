@@ -4,7 +4,8 @@
 
 - [x] Review the PRD, choose the Vite + React + TypeScript path, and identify security and Spark-plan constraints.
 - [x] Build the mobile-first PWA shell and preview tournament dashboard with session-only creation.
-- [ ] Build tournament setup and organizer authentication.
+- [x] Add Firebase web SDK initialization with optional environment-based configuration.
+- [ ] Build organizer authentication and persistent tournament setup.
 - [ ] Define Firestore documents and security rules; keep captain contact details out of public team records.
 - [ ] Add public team registration, organizer approval, and roster management.
 - [ ] Generate knockout, round-robin, and group-stage fixtures.

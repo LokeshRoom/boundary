@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent, type RefObject } from 'react'
+import { isFirebaseConfigured } from './firebase'
 import './App.css'
 
 type Format = 'Knockout' | 'League' | 'Groups + playoffs'
@@ -126,7 +127,7 @@ function App() {
         <div className="sidebar-spacer" />
         <div className="connection-card">
           <span className="connection-dot" />
-          <div><strong>Preview workspace</strong><small>Not connected to Firebase</small></div>
+          <div><strong>{isFirebaseConfigured ? 'Firebase configured' : 'Preview workspace'}</strong><small>{isFirebaseConfigured ? 'Authentication setup is next' : 'Add Firebase settings to connect'}</small></div>
         </div>
         <div className="sidebar-foot">A clearer view of match day.</div>
       </aside>
