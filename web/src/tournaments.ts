@@ -1,6 +1,6 @@
 import { getFirebaseFirestore } from './firebase'
 import type { GroupStageGroup, KnockoutRound, PlayableFixture, RoundRobinRound } from './fixtures'
-import type { LiveMatchSnapshot } from './scoring'
+import { flattenOverBatches, type LiveMatchSnapshot, type OverDeliveryBatch } from './scoring'
 
 export type Format = 'Knockout' | 'League' | 'Groups + playoffs'
 export type Status = 'Registration open' | 'Registration closed' | 'Upcoming' | 'Live' | 'Completed'
@@ -74,6 +74,34 @@ export async function getLiveMatchSnapshot(tournamentId: string, fixture: Playab
     scoreSummary: match.scoreSummary as LiveMatchSnapshot['scoreSummary'],
     recentBalls: match.recentBalls as LiveMatchSnapshot['recentBalls'],
   }
+}
+
+export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number) {
+  if (!Number.isInteger(overNumber) || overNumber < 1 || overNumber > 100) throw new Error('Over number must be between 1 and 100.')
+  if (deliveries) flattenOverBatches([{ overNumber: 1, deliveries }], ballsPerOver)
+  const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
+  const overRef = doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs', String(overNumber))
+
+  await runTransaction(firestore, async (transaction) => {
+    const savedOver = await transaction.get(overRef)
+    if (!deliveries) {
+      if (savedOver.exists()) transaction.delete(overRef)
+      return
+    }
+
+    const updated = { overNumber, deliveries, updatedAt: serverTimestamp() }
+    if (savedOver.exists()) transaction.update(overRef, updated)
+    else transaction.set(overRef, { ...updated, createdAt: serverTimestamp() })
+  })
+}
+
+export async function getOverDeliveryBatches(tournamentId: string, fixture: PlayableFixture, ballsPerOver: number): Promise<OverDeliveryBatch[]> {
+  const { firestore, collection, getDocs } = await getFirebaseFirestore()
+  const oversRef = collection(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs')
+  const savedOvers = await getDocs(oversRef)
+  const batches = savedOvers.docs.map((saved) => saved.data() as OverDeliveryBatch).sort((left, right) => left.overNumber - right.overNumber)
+  flattenOverBatches(batches, ballsPerOver)
+  return batches
 }
 
 const firestoreFormats = {

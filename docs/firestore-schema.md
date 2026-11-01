@@ -46,4 +46,6 @@ Public registration also requires a reCAPTCHA v3 App Check site key in `VITE_FIR
 
 ## Live match summary
 
-`matches/{tournamentId}_{fixtureId}` stores the public summary for one scheduled match: fixture identity and team snapshots, current innings, the complete current innings summary, and at most the latest 18 delivery events. Public viewers can read this bounded document; only the tournament organizer can create or update it. Updates cannot change the fixture identity, teams, or creation timestamp. Full delivery history remains separate and is not persisted yet.
+`matches/{tournamentId}_{fixtureId}` stores the public summary for one scheduled match: fixture identity and team snapshots, current innings, the complete current innings summary, and at most the latest 18 delivery events. Public viewers can read this bounded document; only the tournament organizer can create or update it. Updates cannot change the fixture identity, teams, or creation timestamp.
+
+`matches/{tournamentId}_{fixtureId}/overs/{overNumber}` stores each non-empty over batch with its ordered delivery events and timestamps. Public viewers can read over history; only the tournament organizer can create, update, or delete it. The client validates consecutive over numbers, legal-ball limits, and completed non-final overs before saving or restoring batches. The match summary and over batches are saved separately, so scoring-console integration must coordinate both writes.

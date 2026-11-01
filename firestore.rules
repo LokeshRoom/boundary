@@ -158,6 +158,18 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function validOverBatch(data) {
+      return data.keys().hasAll(['overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+        && data.overNumber is int
+        && data.overNumber > 0
+        && data.overNumber <= 100
+        && data.deliveries is list
+        && data.deliveries.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function validPrivateRegistration(data) {
       return data.keys().hasAll(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
@@ -218,6 +230,21 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
       allow delete: if ownsTournament(resource.data.tournamentId);
+
+      match /overs/{overId} {
+        allow read: if true;
+        allow create: if exists(/databases/$(database)/documents/matches/$(matchId))
+          && ownsTournament(get(/databases/$(database)/documents/matches/$(matchId)).data.tournamentId)
+          && validOverBatch(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsTournament(get(/databases/$(database)/documents/matches/$(matchId)).data.tournamentId)
+          && validOverBatch(request.resource.data)
+          && request.resource.data.overNumber == resource.data.overNumber
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(get(/databases/$(database)/documents/matches/$(matchId)).data.tournamentId);
+      }
     }
 
     match /tournaments/{tournamentId} {
