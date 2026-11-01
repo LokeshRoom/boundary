@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateKnockoutRounds, type FixtureEntrant } from './fixtures'
-import { addPlayer, createTeam, listPendingRegistrations, listPlayers, listTeams, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
+import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { listOwnedTournaments, saveKnockoutFixtures, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
@@ -219,6 +219,21 @@ function TeamDialog({
     }).finally(() => setPlayersLoading(false))
   }
 
+  function approveRegistration(registration: PendingRegistration) {
+    if (!tournament?.id || !canManage) return
+    const tournamentId = tournament.id
+    setSubmitting(true)
+    setError('')
+    void approveTeamRegistration(tournamentId, registration.id).then((team) => {
+      setPendingRegistrations((current) => current.filter((pending) => pending.id !== registration.id))
+      const updatedTeams = [...teams, team]
+      setTeams(updatedTeams)
+      onTeamAdded(tournamentId, updatedTeams.length)
+    }).catch(() => {
+      setError('Could not approve this registration. It may already have been handled, or Firestore rules may need an update.')
+    }).finally(() => setSubmitting(false))
+  }
+
   function copyRegistrationLink() {
     if (!tournament?.id) return
     const link = `${window.location.origin}/t/${tournament.id}/register`
@@ -295,6 +310,8 @@ function TeamDialog({
             {loading ? <p className="form-note">Loading submissions...</p> : pendingRegistrations.length ? pendingRegistrations.map((registration) => <article className="pending-registration" key={registration.id}>
               <div><strong>{registration.teamName}</strong><span>{registration.shortName}</span></div>
               <p>{registration.captainName} · {registration.captainContact}</p>
+              <ul>{registration.players.map((player, index) => <li key={`${player.name}-${index}`}>{player.name} · #{player.jerseyNumber} · {player.role.replaceAll('_', ' ')}</li>)}</ul>
+              <button className="roster-action" type="button" disabled={submitting} onClick={() => approveRegistration(registration)}>{submitting ? 'Approving...' : 'Approve team'}</button>
             </article>) : <p className="form-note">No pending registrations.</p>}
           </section>
           <div className="team-list" aria-live="polite">

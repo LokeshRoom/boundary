@@ -152,6 +152,7 @@ h1, h2, p { margin-top: 0; }
 .pending-registration div { display: flex; justify-content: space-between; gap: 12px; }
 .pending-registration span { color: #748076; font-weight: 700; letter-spacing: .06em; }
 .pending-registration p { margin: 5px 0 0; color: #748076; overflow-wrap: anywhere; }
+.pending-registration ul { margin: 7px 0; padding-left: 18px; color: #536158; }
 .bracket-toggle { justify-self: start; padding: 0; font-size: 11px; }
 .bracket-preview { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 10px; }
 .bracket-round { display: grid; min-width: 145px; align-content: start; gap: 8px; }

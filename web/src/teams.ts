@@ -38,6 +38,7 @@ export type PendingRegistration = {
   shortName: string
   captainName: string
   captainContact: string
+  players: NewPlayer[]
 }
 
 export async function listTeams(tournamentId: string): Promise<Team[]> {
@@ -49,7 +50,48 @@ export async function listTeams(tournamentId: string): Promise<Team[]> {
 export async function listPendingRegistrations(tournamentId: string): Promise<PendingRegistration[]> {
   const { firestore, collection, getDocs } = await getFirebaseFirestore()
   const result = await getDocs(collection(firestore, 'tournaments', tournamentId, 'pendingRegistrations'))
-  return result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }) as PendingRegistration)
+  return Promise.all(result.docs.map(async (snapshot) => {
+    const players = await getDocs(collection(snapshot.ref, 'players'))
+    return { id: snapshot.id, ...snapshot.data(), players: players.docs.map((player) => player.data() as NewPlayer) } as PendingRegistration
+  }))
+}
+
+export async function approveTeamRegistration(tournamentId: string, registrationId: string): Promise<Team> {
+  const { firestore, collection, doc, getDocs, increment, runTransaction, serverTimestamp } = await getFirebaseFirestore()
+  const registrationRef = doc(firestore, 'tournaments', tournamentId, 'pendingRegistrations', registrationId)
+  const playersRef = collection(registrationRef, 'players')
+  const teamRef = doc(collection(firestore, 'tournaments', tournamentId, 'teams'))
+  const privateRegistrationRef = doc(firestore, 'tournaments', tournamentId, 'privateRegistrations', teamRef.id)
+  const tournamentRef = doc(firestore, 'tournaments', tournamentId)
+  const playersSnapshot = await getDocs(playersRef)
+
+  return runTransaction(firestore, async (transaction) => {
+    const registrationSnapshot = await transaction.get(registrationRef)
+    if (!registrationSnapshot.exists()) throw new Error('Registration is no longer pending')
+
+    const registration = registrationSnapshot.data()
+    const timestamp = serverTimestamp()
+    transaction.set(teamRef, {
+      name: registration.teamName,
+      shortName: registration.shortName,
+      status: 'APPROVED',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    transaction.set(privateRegistrationRef, {
+      captainName: registration.captainName,
+      captainContact: registration.captainContact,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    for (const player of playersSnapshot.docs) {
+      transaction.set(doc(collection(teamRef, 'players')), player.data())
+      transaction.delete(player.ref)
+    }
+    transaction.delete(registrationRef)
+    transaction.update(tournamentRef, { teamCount: increment(1), updatedAt: timestamp })
+    return { id: teamRef.id, name: registration.teamName, shortName: registration.shortName }
+  })
 }
 
 export async function createTeam(tournamentId: string, team: NewTeam): Promise<Team> {
