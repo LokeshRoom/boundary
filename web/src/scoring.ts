@@ -47,6 +47,12 @@ export type OverDeliveryBatch = {
   deliveries: DeliveryEvent[]
 }
 
+export type InningsScorecard = {
+  summary: InningsSummary
+  batting: BatterSummary[]
+  bowling: BowlerSummary[]
+}
+
 const extrasTypes: ExtrasType[] = ['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY']
 
 function validateDelivery(delivery: DeliveryEvent) {
@@ -109,6 +115,19 @@ export function summarizeBowlingScorecard(deliveries: readonly DeliveryEvent[], 
     overs: `${Math.floor(bowler.legalBalls / ballsPerOver)}.${bowler.legalBalls % ballsPerOver}`,
     economy: bowler.legalBalls === 0 ? 0 : bowler.runsConceded * ballsPerOver / bowler.legalBalls,
   }))
+}
+
+export function buildInningsScorecard(
+  deliveries: readonly DeliveryEvent[],
+  batterIds: readonly string[],
+  bowlerIds: readonly string[],
+  ballsPerOver: number,
+): InningsScorecard {
+  return {
+    summary: summarizeInnings(deliveries, ballsPerOver),
+    batting: summarizeBattingScorecard(deliveries, batterIds),
+    bowling: summarizeBowlingScorecard(deliveries, bowlerIds, ballsPerOver),
+  }
 }
 
 export function summarizeInnings(deliveries: readonly DeliveryEvent[], ballsPerOver: number): InningsSummary {

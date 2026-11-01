@@ -36,7 +36,8 @@
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
 - [x] Group historical delivery events into over-numbered batches for compact persistence.
 - [ ] Persist current match summaries and historical over batches with organizer-only writes.
-- [ ] Combine batting and bowling figures into full scorecards and publish them.
+- [x] Compose complete innings scorecards from innings, batting, and bowling summaries.
+- [ ] Publish full scorecards for completed and live matches.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.
 - [ ] Verify Firebase Spark limits, production rules, and Firebase Hosting deployment.

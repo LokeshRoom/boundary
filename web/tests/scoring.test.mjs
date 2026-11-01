@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { groupDeliveriesByOver, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { buildInningsScorecard, groupDeliveriesByOver, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -98,4 +98,15 @@ test('groups historical deliveries by legal over without splitting wides or no-b
   assert.deepEqual(batches.map(({ overNumber, deliveries: over }) => [overNumber, over.length]), [[1, 5], [2, 2]])
   assert.deepEqual(groupDeliveriesByOver([], 6), [])
   assert.throws(() => groupDeliveriesByOver(deliveries, 0), /positive integer/)
+})
+
+test('composes an innings total with batting and bowling figures', () => {
+  const scorecard = buildInningsScorecard([
+    delivery({ runsOffBat: 4 }),
+    delivery({ strikerId: 'batter-2', runsOffBat: 1 }),
+  ], ['batter-1', 'batter-2'], ['bowler-1'], 6)
+
+  assert.equal(scorecard.summary.runs, 5)
+  assert.equal(scorecard.batting.reduce((total, batter) => total + batter.runs, 0), 5)
+  assert.equal(scorecard.bowling[0].runsConceded, 5)
 })
