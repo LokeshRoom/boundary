@@ -151,6 +151,31 @@ export function generateKnockoutRounds(teams: readonly FixtureTeam[]): KnockoutR
   return rounds
 }
 
+export function generateTwoGroupPlayoffRounds(
+  groups: readonly GroupStageGroup[],
+  qualifiers: readonly { winnerId: string; runnerUpId: string }[],
+): KnockoutRound[] {
+  if (groups.length !== 2 || qualifiers.length !== 2) throw new Error('A group playoff bracket needs exactly two groups and two qualifiers per group.')
+  const getTeam = (group: GroupStageGroup, id: string) => {
+    const team = group.teams.find(({ id: teamId }) => teamId === id)
+    if (!team) throw new Error('Each playoff qualifier must belong to its group.')
+    return team
+  }
+  const seeded = groups.map((group, index) => {
+    const { winnerId, runnerUpId } = qualifiers[index]
+    if (!winnerId || !runnerUpId || winnerId === runnerUpId) throw new Error('Choose two different qualifiers for each group.')
+    return { winner: getTeam(group, winnerId), runnerUp: getTeam(group, runnerUpId) }
+  })
+  if (new Set(seeded.flatMap(({ winner, runnerUp }) => [winner.id, runnerUp.id])).size !== 4) throw new Error('Playoff qualifiers must be unique.')
+
+  return generateKnockoutRounds([
+    seeded[0].winner,
+    seeded[1].runnerUp,
+    seeded[1].winner,
+    seeded[0].runnerUp,
+  ])
+}
+
 export function generateRoundRobinRounds(teams: readonly FixtureTeam[]): RoundRobinRound[] {
   if (teams.length < 2) throw new Error('A round-robin schedule needs at least two teams.')
   if (teams.length > ROUND_ROBIN_TEAM_LIMIT) throw new Error(`A round-robin schedule supports up to ${ROUND_ROBIN_TEAM_LIMIT} teams.`)

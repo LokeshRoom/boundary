@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT } from '../src/fixtures.ts'
+import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, generateTwoGroupPlayoffRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT } from '../src/fixtures.ts'
 
 const teams = ['A', 'B', 'C', 'D'].map((id) => ({ id, name: id }))
 
@@ -45,6 +45,29 @@ test('group stage requires enough unique teams and a valid group count', () => {
   assert.throws(() => generateGroupStage(teams.slice(0, 3), 2))
   assert.throws(() => generateGroupStage(teams, 1))
   assert.throws(() => generateGroupStage([teams[0], teams[1], teams[2], teams[0]], 2))
+})
+
+test('generates a cross-group semifinal bracket from selected winners and runners-up', () => {
+  const groups = generateGroupStage(teams, 2)
+  const rounds = generateTwoGroupPlayoffRounds(groups, [
+    { winnerId: groups[0].teams[0].id, runnerUpId: groups[0].teams[1].id },
+    { winnerId: groups[1].teams[0].id, runnerUpId: groups[1].teams[1].id },
+  ])
+
+  assert.equal(rounds.length, 2)
+  assert.deepEqual(rounds[0].matches.map(({ teamA, teamB }) => [teamA.team.id, teamB.team.id]), [
+    [groups[0].teams[0].id, groups[1].teams[1].id],
+    [groups[1].teams[0].id, groups[0].teams[1].id],
+  ])
+  assert.throws(() => generateTwoGroupPlayoffRounds(groups.slice(0, 1), []), /exactly two groups/)
+  assert.throws(() => generateTwoGroupPlayoffRounds(groups, [
+    { winnerId: groups[0].teams[0].id, runnerUpId: groups[0].teams[0].id },
+    { winnerId: groups[1].teams[0].id, runnerUpId: groups[1].teams[1].id },
+  ]), /two different qualifiers/)
+  assert.throws(() => generateTwoGroupPlayoffRounds(groups, [
+    { winnerId: groups[1].teams[0].id, runnerUpId: groups[0].teams[1].id },
+    { winnerId: groups[1].teams[0].id, runnerUpId: groups[1].teams[1].id },
+  ]), /belong to its group/)
 })
 
 test('lists concrete playable matches and excludes byes and unresolved knockout entrants', () => {
