@@ -110,6 +110,7 @@ test('builds batting figures with wides excluded and no-balls faced', () => {
 test('batting scorecard rejects unknown batters and invalid wicket attribution', () => {
   assert.throws(() => summarizeBattingScorecard([delivery()], ['batter-2']), /striker/)
   assert.throws(() => summarizeBattingScorecard([delivery({ isWicket: true })], ['batter-1']), /dismissed batter/)
+  assert.throws(() => summarizeBattingScorecard([delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED', incomingBatterId: 'batter-1' })], ['batter-1']), /differ from the dismissed/)
 })
 
 test('builds bowling figures while excluding byes, leg-byes, penalty runs, and uncredited wickets', () => {
@@ -235,6 +236,19 @@ test('replaces a dismissed striker from the batting lineup and keeps history und
   assert.throws(() => summarizeBattingScorecard([wicket], ['batter-1', 'batter-2']), /incoming batter/)
   assert.throws(() => advanceBattingEnds(ends, { ...wicket, incomingBatterId: 'batter-2' }, 0, 6), /already be at the crease/)
   assert.deepEqual(undoLastDelivery([wicket]), [])
+})
+
+test('rejects returning a dismissed batter and repeated dismissals in saved history', () => {
+  const ends = { strikerId: 'batter-1', nonStrikerId: 'batter-2' }
+  const firstWicket = delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED', incomingBatterId: 'batter-3' })
+  const recalledBatter = delivery({ strikerId: 'batter-3', isWicket: true, dismissedBatterId: 'batter-3', dismissalType: 'CAUGHT', incomingBatterId: 'batter-1' })
+  const repeatedDismissal = delivery({ strikerId: 'batter-3', isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'CAUGHT', incomingBatterId: 'batter-4' })
+
+  assert.throws(() => advanceBattingEnds(ends, { ...firstWicket, incomingBatterId: 'batter-1' }, 0, 6), /differ from the dismissed/)
+  assert.throws(() => getBattingEndsAfter([firstWicket, recalledBatter], ends, 6), /already dismissed/)
+  assert.throws(() => getBattingEndsAfter([firstWicket, repeatedDismissal], ends, 6), /more than once/)
+  assert.throws(() => summarizeBattingScorecard([firstWicket, recalledBatter], ['batter-1', 'batter-2', 'batter-3']), /already dismissed/)
+  assert.throws(() => summarizeBattingScorecard([firstWicket, repeatedDismissal], ['batter-1', 'batter-2', 'batter-3', 'batter-4']), /more than once/)
 })
 
 test('ends the innings on a wicket without a replacement batter', () => {

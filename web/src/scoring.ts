@@ -158,6 +158,7 @@ function validateDelivery(delivery: DeliveryEvent) {
   if (!Number.isInteger(delivery.completedRuns) || delivery.completedRuns < 0) throw new Error('Completed runs must be a non-negative integer.')
   if (delivery.dismissedBatterId !== undefined && (typeof delivery.dismissedBatterId !== 'string' || !delivery.dismissedBatterId.trim())) throw new Error('A dismissed batter ID must be a non-empty string.')
   if (delivery.incomingBatterId !== undefined && (typeof delivery.incomingBatterId !== 'string' || !delivery.incomingBatterId.trim())) throw new Error('An incoming batter ID must be a non-empty string.')
+  if (delivery.incomingBatterId && delivery.incomingBatterId === delivery.dismissedBatterId) throw new Error('The incoming batter must differ from the dismissed batter.')
   if (delivery.dismissalType && !['BOWLED', 'CAUGHT', 'LBW', 'RUN_OUT', 'STUMPED', 'HIT_WICKET', 'RETIRED_OUT'].includes(delivery.dismissalType)) throw new Error('Unknown dismissal type.')
   if (delivery.isWicket !== Boolean(delivery.dismissedBatterId) || delivery.isWicket !== Boolean(delivery.dismissalType)) throw new Error('Wicket deliveries must identify the dismissed batter and dismissal type.')
   if (!Number.isInteger(delivery.runsOffBat) || delivery.runsOffBat < 0) throw new Error('Runs off the bat must be a non-negative integer.')
@@ -232,6 +233,7 @@ export function advanceBattingEnds(
   if (!Number.isInteger(legalBallsInOverBefore) || legalBallsInOverBefore < 0 || legalBallsInOverBefore >= ballsPerOver) throw new Error('Legal balls in the current over are out of range.')
   if (delivery.strikerId !== ends.strikerId) throw new Error('The delivery striker must be at the striker end.')
   if (delivery.isWicket && (delivery.dismissedBatterId !== ends.strikerId || delivery.completedRuns !== 0 || delivery.runsOffBat !== 0)) throw new Error('A wicket in the preview must dismiss the striker without completed runs.')
+  if (delivery.isWicket && delivery.incomingBatterId === delivery.dismissedBatterId) throw new Error('The incoming batter must differ from the dismissed batter.')
   if (delivery.isWicket && delivery.incomingBatterId && delivery.incomingBatterId === ends.nonStrikerId) throw new Error('The incoming batter must not already be at the crease.')
   if (delivery.isWicket && !delivery.incomingBatterId) return { strikerId: '', nonStrikerId: '' }
 
@@ -248,8 +250,12 @@ export function advanceBattingEnds(
 export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openingEnds: BattingEnds, ballsPerOver: number): BattingEnds {
   let ends = openingEnds
   let legalBallsInOver = 0
+  const dismissedBatterIds = new Set<string>()
   deliveries.forEach((delivery) => {
+    if (delivery.isWicket && delivery.dismissedBatterId && dismissedBatterIds.has(delivery.dismissedBatterId)) throw new Error('A batter cannot be dismissed more than once.')
+    if (delivery.isWicket && delivery.incomingBatterId && dismissedBatterIds.has(delivery.incomingBatterId)) throw new Error('An already dismissed batter cannot return to the crease.')
     ends = advanceBattingEnds(ends, delivery, legalBallsInOver, ballsPerOver)
+    if (delivery.dismissedBatterId) dismissedBatterIds.add(delivery.dismissedBatterId)
     legalBallsInOver = delivery.legalBall ? (legalBallsInOver + 1) % ballsPerOver : legalBallsInOver
   })
   return ends
@@ -258,9 +264,11 @@ export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openin
 export function summarizeBattingScorecard(deliveries: readonly DeliveryEvent[], batterIds: readonly string[]): BatterSummary[] {
   if (new Set(batterIds).size !== batterIds.length || batterIds.some((id) => !id.trim())) throw new Error('Batter IDs must be unique and non-empty.')
   const batters = new Map(batterIds.map((playerId) => [playerId, { playerId, runs: 0, ballsFaced: 0, fours: 0, sixes: 0, dismissed: false, dismissalType: null as DismissalType | null, strikeRate: 0 }]))
+  const dismissedBatterIds = new Set<string>()
 
   deliveries.forEach((delivery) => {
     validateDelivery(delivery)
+    if (delivery.incomingBatterId && dismissedBatterIds.has(delivery.incomingBatterId)) throw new Error('An already dismissed batter cannot return to the crease.')
     const batter = batters.get(delivery.strikerId)
     if (!batter) throw new Error('Every striker must be included in the batting lineup.')
     batter.runs += delivery.runsOffBat
@@ -270,8 +278,10 @@ export function summarizeBattingScorecard(deliveries: readonly DeliveryEvent[], 
     if (delivery.dismissedBatterId) {
       const dismissed = batters.get(delivery.dismissedBatterId)
       if (!dismissed) throw new Error('The dismissed batter must be included in the batting lineup.')
+      if (dismissedBatterIds.has(delivery.dismissedBatterId)) throw new Error('A batter cannot be dismissed more than once.')
       dismissed.dismissed = true
       dismissed.dismissalType = delivery.dismissalType!
+      dismissedBatterIds.add(delivery.dismissedBatterId)
     }
     if (delivery.incomingBatterId && !batters.has(delivery.incomingBatterId)) throw new Error('The incoming batter must be included in the batting lineup.')
   })
