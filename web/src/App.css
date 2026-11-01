@@ -21,6 +21,10 @@
 .sidebar-foot { padding: 15px 4px 0; color: #93aa9b; font-size: 10px; }
 .main-content { min-height: 100vh; margin-left: 238px; }
 .topbar { display: flex; height: 76px; align-items: center; justify-content: flex-end; gap: 24px; padding: 0 clamp(24px, 4vw, 64px); border-bottom: 1px solid #e5e9e1; background: #fff; }
+.auth-actions { display: flex; align-items: center; gap: 10px; }
+.auth-user { max-width: 180px; overflow: hidden; color: #526157; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.auth-button { flex: 0 0 auto; }
+.auth-error { margin: 0; padding: 10px 24px; color: #9d3d30; background: #fff1ed; font-size: 12px; }
 .mobile-brand { display: none; }
 .top-date { color: #68756d; font-size: 12px; }
 .button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 9px; padding: 0 15px; border: 1px solid transparent; border-radius: 7px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; text-decoration: none; transition: background .15s ease, transform .15s ease, border-color .15s ease; }

@@ -8,15 +8,17 @@ const config = {
 
 export const isFirebaseConfigured = Boolean(config.apiKey && config.authDomain && config.projectId && config.appId)
 
-export async function getFirebaseServices() {
+export async function getFirebaseAuth() {
   if (!isFirebaseConfigured) throw new Error('Firebase web configuration is missing')
 
-  const [{ getApps, initializeApp }, { getAuth }, { getFirestore }] = await Promise.all([
-    import('firebase/app'),
-    import('firebase/auth'),
-    import('firebase/firestore'),
-  ])
+  const [{ getApps, initializeApp }, authSdk] = await Promise.all([import('firebase/app'), import('firebase/auth')])
   const app = getApps()[0] ?? initializeApp(config)
 
-  return { app, auth: getAuth(app), firestore: getFirestore(app) }
+  return {
+    auth: authSdk.getAuth(app),
+    onAuthStateChanged: authSdk.onAuthStateChanged,
+    GoogleAuthProvider: authSdk.GoogleAuthProvider,
+    signInWithPopup: authSdk.signInWithPopup,
+    signOut: authSdk.signOut,
+  }
 }

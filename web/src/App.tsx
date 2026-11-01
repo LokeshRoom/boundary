@@ -1,5 +1,5 @@
-import { useRef, useState, type FormEvent, type RefObject } from 'react'
-import { isFirebaseConfigured } from './firebase'
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
+import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import './App.css'
 
 type Format = 'Knockout' | 'League' | 'Groups + playoffs'
@@ -103,7 +103,61 @@ function TournamentDialog({
 
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
+  const [organizer, setOrganizer] = useState<string | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authError, setAuthError] = useState('')
   const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return
+
+    let active = true
+    let unsubscribe: (() => void) | undefined
+    void getFirebaseAuth().then(({ auth, onAuthStateChanged }) => {
+      if (!active) return
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        setOrganizer(user?.displayName || user?.email || null)
+        setAuthReady(true)
+      })
+    }).catch(() => {
+      if (active) {
+        setAuthError('Could not connect to Firebase Authentication. Check your web settings.')
+        setAuthReady(true)
+      }
+    })
+
+    return () => {
+      active = false
+      unsubscribe?.()
+    }
+  }, [])
+
+  async function signIn() {
+    setAuthBusy(true)
+    setAuthError('')
+    try {
+      const { auth, GoogleAuthProvider, signInWithPopup } = await getFirebaseAuth()
+      await signInWithPopup(auth, new GoogleAuthProvider())
+    } catch {
+      setAuthError('Sign-in failed. Check that Google is enabled in Firebase Authentication and this domain is authorized.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function signOut() {
+    setAuthBusy(true)
+    setAuthError('')
+    try {
+      const { auth, signOut: firebaseSignOut } = await getFirebaseAuth()
+      await firebaseSignOut(auth)
+    } catch {
+      setAuthError('Could not sign out. Please try again.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
 
   function addTournament(tournament: Tournament) {
     setTournaments((current) => [tournament, ...current])
@@ -136,10 +190,16 @@ function App() {
         <header className="topbar">
           <div className="mobile-brand"><span className="brand-mark"><span /><span /><span /></span>boundary<span className="brand-dot">.</span></div>
           <span className="top-date">Season dashboard</span>
+          {isFirebaseConfigured && (organizer ? (
+            <div className="auth-actions"><span className="auth-user">{organizer}</span><button className="button button-outline auth-button" type="button" onClick={signOut} disabled={authBusy}>{authBusy ? 'Please wait' : 'Sign out'}</button></div>
+          ) : (
+            <button className="button button-outline auth-button" type="button" onClick={signIn} disabled={!authReady || authBusy}>{authBusy ? 'Please wait' : 'Sign in with Google'}</button>
+          ))}
           <button className="button button-primary top-create" type="button" onClick={() => dialogRef.current?.showModal()}>
             <Icon name="plus" size={17} /><span>New tournament</span>
           </button>
         </header>
+        {authError && <p className="auth-error" role="status">{authError}</p>}
 
         <div className="content-wrap">
           <section className="page-heading">

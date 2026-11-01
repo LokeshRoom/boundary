@@ -6,6 +6,7 @@
 - [x] Build the mobile-first PWA shell and preview tournament dashboard with session-only creation.
 - [x] Add Firebase web SDK initialization with optional environment-based configuration.
 - [x] Defer Firebase Auth and Firestore SDK loading until a Firebase-backed feature requests it.
+- [x] Add organizer Google sign-in, sign-out, and auth-state display.
 - [ ] Build organizer authentication and persistent tournament setup.
 - [ ] Define Firestore documents and security rules; keep captain contact details out of public team records.
 - [ ] Add public team registration, organizer approval, and roster management.
