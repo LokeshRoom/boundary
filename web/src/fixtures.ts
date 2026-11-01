@@ -36,7 +36,64 @@ export type GroupStageGroup = {
   rounds: RoundRobinRound[]
 }
 
+export type PlayableFixture = {
+  id: string
+  stage: 'KNOCKOUT' | 'LEAGUE' | 'GROUP'
+  roundName: string
+  matchNumber: number
+  groupName?: string
+  teamA: FixtureTeam
+  teamB: FixtureTeam
+}
+
 export const ROUND_ROBIN_TEAM_LIMIT = 64
+
+export function listPlayableFixtures(
+  knockoutRounds: readonly KnockoutRound[] = [],
+  leagueRounds: readonly RoundRobinRound[] = [],
+  groups: readonly GroupStageGroup[] = [],
+): PlayableFixture[] {
+  const fixtures: PlayableFixture[] = []
+
+  knockoutRounds.forEach((round, roundIndex) => round.matches.forEach((match, matchIndex) => {
+    if (match.bye || match.teamA.type !== 'team' || !match.teamB || match.teamB.type !== 'team') return
+    fixtures.push({
+      id: `knockout-round-${roundIndex + 1}-match-${matchIndex + 1}`,
+      stage: 'KNOCKOUT',
+      roundName: round.name,
+      matchNumber: match.number,
+      teamA: match.teamA.team,
+      teamB: match.teamB.team,
+    })
+  }))
+
+  leagueRounds.forEach((round, roundIndex) => round.matches.forEach((match, matchIndex) => {
+    if (match.bye || !match.teamB) return
+    fixtures.push({
+      id: `league-round-${roundIndex + 1}-match-${matchIndex + 1}`,
+      stage: 'LEAGUE',
+      roundName: round.name,
+      matchNumber: matchIndex + 1,
+      teamA: match.teamA,
+      teamB: match.teamB,
+    })
+  }))
+
+  groups.forEach((group, groupIndex) => group.rounds.forEach((round, roundIndex) => round.matches.forEach((match, matchIndex) => {
+    if (match.bye || !match.teamB) return
+    fixtures.push({
+      id: `group-${groupIndex + 1}-round-${roundIndex + 1}-match-${matchIndex + 1}`,
+      stage: 'GROUP',
+      groupName: group.name,
+      roundName: round.name,
+      matchNumber: matchIndex + 1,
+      teamA: match.teamA,
+      teamB: match.teamB,
+    })
+  })))
+
+  return fixtures
+}
 
 function roundName(matchCount: number) {
   if (matchCount === 1) return 'Final'

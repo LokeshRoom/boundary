@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { generateGroupStage, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT } from '../src/fixtures.ts'
+import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT } from '../src/fixtures.ts'
 
 const teams = ['A', 'B', 'C', 'D'].map((id) => ({ id, name: id }))
 
@@ -45,4 +45,19 @@ test('group stage requires enough unique teams and a valid group count', () => {
   assert.throws(() => generateGroupStage(teams.slice(0, 3), 2))
   assert.throws(() => generateGroupStage(teams, 1))
   assert.throws(() => generateGroupStage([teams[0], teams[1], teams[2], teams[0]], 2))
+})
+
+test('lists concrete playable matches and excludes byes and unresolved knockout entrants', () => {
+  const fixtures = listPlayableFixtures(
+    generateKnockoutRounds(teams),
+    generateRoundRobinRounds(teams.slice(0, 3)),
+    generateGroupStage(teams, 2),
+  )
+
+  assert.equal(fixtures.length, 7)
+  assert.equal(new Set(fixtures.map((fixture) => fixture.id)).size, fixtures.length)
+  assert.deepEqual(fixtures.slice(0, 2).map(({ stage, roundName }) => [stage, roundName]), [['KNOCKOUT', 'Semi-finals'], ['KNOCKOUT', 'Semi-finals']])
+  assert.equal(fixtures.at(-1).stage, 'GROUP')
+  assert.equal(fixtures.every(({ teamA, teamB }) => Boolean(teamA.id && teamB.id)), true)
+  assert.equal(fixtures.some(({ roundName }) => roundName === 'Final'), false)
 })
