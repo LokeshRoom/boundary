@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
-import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
+import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, makeWicketDelivery, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent, type DismissalType } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -619,6 +619,7 @@ function App() {
   const [previewDeliveries, setPreviewDeliveries] = useState<DeliveryEvent[]>([])
   const [previewNoBallRuns, setPreviewNoBallRuns] = useState(0)
   const [previewWideOutcome, setPreviewWideOutcome] = useState('1:0')
+  const [previewDismissalType, setPreviewDismissalType] = useState<DismissalType>('BOWLED')
   const [previewMatch, setPreviewMatch] = useState<{ tournamentId?: string; tournamentName: string; oversLimit: number; ballsPerOver: number; fixture: PlayableFixture } | null>(null)
   const [loadedMatchKey, setLoadedMatchKey] = useState<string | null>(null)
   const [scoreSaveStatus, setScoreSaveStatus] = useState('')
@@ -793,7 +794,7 @@ function App() {
 
   function recordPreviewWicket() {
     if (!previewCanRecordWicket) return
-    recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: 'preview-bowler', completedRuns: 0, dismissedBatterId: previewEnds.strikerId, dismissalType: 'BOWLED', ...(previewIncoming && { incomingBatterId: previewIncoming.id }), runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: true })
+    recordPreviewDelivery(makeWicketDelivery(previewEnds.strikerId, 'preview-bowler', previewDismissalType, previewIncoming?.id))
   }
 
   async function signIn() {
@@ -949,7 +950,7 @@ function App() {
                 <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver || previewMatchLoading} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
                   <label className="score-no-ball score-wide"><span>Wide result</span><select aria-label="Wide result" value={previewWideOutcome} onChange={(event) => setPreviewWideOutcome(event.target.value)} disabled={previewInningsOver || previewMatchLoading}><option value="1:0">1 wide</option><option value="2:1">2 wides</option><option value="3:2">3 wides</option><option value="4:3">4 wides</option><option value="5:0">5 wide boundary</option><option value="5:4">5 wides</option><option value="6:5">6 wides</option></select><button className="score-key score-key-extra" type="button" disabled={previewInningsOver || previewMatchLoading} onClick={recordPreviewWide}>WD</button></label>
                   <label className="score-no-ball"><span>NB runs</span><select aria-label="Batter runs on no-ball" value={previewNoBallRuns} onChange={(event) => setPreviewNoBallRuns(Number(event.target.value))} disabled={previewInningsOver || previewMatchLoading}><option value={0}>0</option><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option><option value={6}>6</option></select><button className="score-key score-key-extra" type="button" disabled={previewInningsOver || previewMatchLoading} onClick={recordPreviewNoBall}>NB</button></label>
-                  <button className="score-key score-key-extra" type="button" disabled={!previewCanRecordWicket || previewMatchLoading} onClick={recordPreviewWicket}>Wicket</button>
+                  <label className="score-dismissal"><span>Dismissal</span><select aria-label="Dismissal type" value={previewDismissalType} onChange={(event) => setPreviewDismissalType(event.target.value as DismissalType)} disabled={previewInningsOver || previewMatchLoading}><option value="BOWLED">Bowled</option><option value="CAUGHT">Caught</option><option value="LBW">LBW</option><option value="RUN_OUT">Run out</option><option value="STUMPED">Stumped</option><option value="HIT_WICKET">Hit wicket</option><option value="RETIRED_OUT">Retired out</option></select><button className="score-key score-key-extra" type="button" disabled={!previewCanRecordWicket || previewMatchLoading} onClick={recordPreviewWicket}>Wicket</button></label>
                   <button className="score-key score-key-undo" type="button" disabled={!previewDeliveries.length || previewMatchLoading} onClick={undoPreviewDelivery}>Undo last</button>
                 </div>
                 <small role={scoreSaveStatus || previewMatchLoading ? 'status' : undefined}>{scoreSaveStatus || (previewMatchLoading ? 'Loading saved score...' : previewInningsOver ? 'Sample innings complete' : previewMatchKey && organizerUid ? 'Score syncs to Firebase as you enter deliveries.' : 'Preview only · score resets when the page reloads.')}</small>

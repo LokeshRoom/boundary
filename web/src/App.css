@@ -99,6 +99,9 @@ h1, h2, p { margin-top: 0; }
 .score-no-ball { display: inline-flex; align-items: center; gap: 4px; color: #f4ca8f; font-size: 8px; }
 .score-no-ball select { width: 40px; height: 30px; border: 1px solid #ffffff35; border-radius: 6px; color: #f5f6ef; background: #315a45; font-size: 10px; }
 .score-wide select { width: 90px; }
+.score-dismissal { display: inline-flex; align-items: center; gap: 4px; color: #f4ca8f; font-size: 8px; }
+.score-dismissal select { width: 90px; height: 30px; border: 1px solid #ffffff35; border-radius: 6px; color: #f5f6ef; background: #315a45; font-size: 10px; }
+.score-dismissal select:focus-visible { outline: 2px solid #d8e7cd; outline-offset: 2px; }
 .score-no-ball select:focus-visible { outline: 2px solid #d8e7cd; outline-offset: 2px; }
 .score-key:hover:not(:disabled) { border-color: #d8e7cd; background: #ffffff18; }
 .score-key:focus-visible { outline: 2px solid #d8e7cd; outline-offset: 2px; }

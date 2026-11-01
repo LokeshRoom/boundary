@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, formatDeliveryLabel, formatExtrasSummary, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, formatDeliveryLabel, formatExtrasSummary, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, makeWicketDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -75,6 +75,15 @@ test('formats recent wide and no-ball outcomes without hiding batter runs', () =
 test('formats the public extras total and non-zero breakdown', () => {
   assert.equal(formatExtrasSummary({ WIDE: 2, NO_BALL: 1, BYE: 0, LEG_BYE: 3, PENALTY: 0 }), 'Extras 6 (wides 2, no-balls 1, leg-byes 3)')
   assert.equal(formatExtrasSummary({ WIDE: 0, NO_BALL: 0, BYE: 0, LEG_BYE: 0, PENALTY: 0 }), 'Extras 0')
+})
+
+test('creates legal wicket deliveries with the selected dismissal type', () => {
+  const wicket = makeWicketDelivery('batter-1', 'bowler-1', 'CAUGHT', 'batter-3')
+  assert.equal(wicket.dismissalType, 'CAUGHT')
+  assert.equal(wicket.dismissedBatterId, 'batter-1')
+  assert.equal(wicket.incomingBatterId, 'batter-3')
+  assert.equal(wicket.legalBall, true)
+  assert.equal(makeWicketDelivery('batter-1', 'bowler-1', 'LBW').incomingBatterId, undefined)
 })
 
 test('undo removes only the most recent delivery', () => {

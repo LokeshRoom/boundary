@@ -201,6 +201,23 @@ export function makeWideDelivery(strikerId: string, bowlerId: string, extrasRuns
   return delivery
 }
 
+export function makeWicketDelivery(strikerId: string, bowlerId: string, dismissalType: DismissalType, incomingBatterId?: string): DeliveryEvent {
+  const delivery: DeliveryEvent = {
+    strikerId,
+    bowlerId,
+    completedRuns: 0,
+    dismissedBatterId: strikerId,
+    ...(incomingBatterId && { incomingBatterId }),
+    dismissalType,
+    runsOffBat: 0,
+    extrasRuns: 0,
+    legalBall: true,
+    isWicket: true,
+  }
+  validateDelivery(delivery)
+  return delivery
+}
+
 export function advanceBattingEnds(
   ends: BattingEnds,
   delivery: DeliveryEvent,
