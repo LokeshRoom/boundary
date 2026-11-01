@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
-import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, generateTwoGroupPlayoffRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
+import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, generateTwoGroupPlayoffRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupPlayoffFixtures, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
 import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, makeWicketDelivery, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent, type DismissalType } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
+import { getGroupPlayoffFixtures, getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupPlayoffFixtures, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
@@ -174,6 +174,9 @@ function TeamDialog({
   const [savedGroupStageTournamentId, setSavedGroupStageTournamentId] = useState<string | null>(null)
   const [savedGroups, setSavedGroups] = useState<GroupStageGroup[] | null>(null)
   const [selectedQualifiersByGroup, setSelectedQualifiersByGroup] = useState<Record<string, { winnerId: string; runnerUpId: string }>>({})
+  const [savedPlayoffsTournamentId, setSavedPlayoffsTournamentId] = useState<string | null>(null)
+  const [savedPlayoffs, setSavedPlayoffs] = useState<GroupPlayoffFixtures | null>(null)
+  const [savingPlayoffs, setSavingPlayoffs] = useState(false)
   const [loadingGroupStage, setLoadingGroupStage] = useState(false)
   const [savingGroupStage, setSavingGroupStage] = useState(false)
   const [groupStageMessage, setGroupStageMessage] = useState('')
@@ -342,16 +345,21 @@ function TeamDialog({
     setGroupStageTournamentId(tournamentId)
     setLoadingGroupStage(true)
     setGroupStageMessage('')
-    void getGroupStageFixtures(tournamentId).then((saved) => {
+    void Promise.all([getGroupStageFixtures(tournamentId), getGroupPlayoffFixtures(tournamentId)]).then(([saved, playoffs]) => {
       setSavedGroupStageTournamentId(tournamentId)
       setSavedGroups(saved)
+      setSavedPlayoffsTournamentId(tournamentId)
+      setSavedPlayoffs(playoffs)
       if (saved) {
         setGroupCount(saved.length)
         setGroupStageMessage('Saved group-stage fixtures loaded.')
       }
+      if (playoffs) setSelectedQualifiersByGroup(Object.fromEntries(playoffs.qualifiers.map(({ groupName, winnerId, runnerUpId }) => [groupName, { winnerId, runnerUpId }])))
     }).catch(() => {
       setSavedGroupStageTournamentId(tournamentId)
       setSavedGroups(null)
+      setSavedPlayoffsTournamentId(tournamentId)
+      setSavedPlayoffs(null)
       setGroupStageMessage('Could not load saved group-stage fixtures. Check Firestore rules and connection.')
     }).finally(() => {
       setGroupStageMessageTournamentId(tournamentId)
@@ -460,12 +468,34 @@ function TeamDialog({
     }
   }
 
+  async function saveGroupPlayoffs() {
+    if (!tournament?.id || !canManage || !hasSavedGroupStage || groupPlayoffRounds.length !== 2 || groups.length !== 2) return
+    const playoffs: GroupPlayoffFixtures = {
+      qualifiers: groups.map((group, index) => ({ groupName: group.name, ...playoffQualifiers[index] })),
+      rounds: groupPlayoffRounds,
+    }
+    setSavingPlayoffs(true)
+    setGroupStageMessage('')
+    try {
+      await saveGroupPlayoffFixtures(tournament.id, playoffs)
+      setSavedPlayoffsTournamentId(tournament.id)
+      setSavedPlayoffs(playoffs)
+      setGroupStageMessage('Playoff bracket saved.')
+    } catch {
+      setGroupStageMessage('Could not save the playoff bracket. It may already exist, or Firestore rules may need an update.')
+    } finally {
+      setGroupStageMessageTournamentId(tournament.id)
+      setSavingPlayoffs(false)
+    }
+  }
+
   const showBracket = bracketTournamentId === tournament?.id
   const showLeagueSchedule = leagueScheduleTournamentId === tournament?.id
   const showGroupStage = groupStageTournamentId === tournament?.id
   const hasSavedBracket = savedBracketTournamentId === tournament?.id && savedBracketRounds !== null
   const hasSavedLeagueSchedule = savedLeagueScheduleTournamentId === tournament?.id && savedLeagueRounds !== null
   const hasSavedGroupStage = savedGroupStageTournamentId === tournament?.id && savedGroups !== null
+  const hasSavedPlayoffs = savedPlayoffsTournamentId === tournament?.id && savedPlayoffs !== null
   const maximumGroupCount = Math.floor(teams.length / 2)
   const selectedGroupCount = Math.max(2, Math.min(groupCount, maximumGroupCount))
   const knockoutRounds = showBracket && !loading && !loadingBracket && tournament?.format === 'Knockout' && teams.length >= 2
@@ -485,7 +515,7 @@ function TeamDialog({
       : group.teams.find(({ id }) => id !== winnerId)!.id
     return { winnerId, runnerUpId }
   })
-  const groupPlayoffRounds = groups.length === 2 ? generateTwoGroupPlayoffRounds(groups, playoffQualifiers) : []
+  const groupPlayoffRounds = hasSavedPlayoffs ? savedPlayoffs.rounds : groups.length === 2 ? generateTwoGroupPlayoffRounds(groups, playoffQualifiers) : []
   const playableFixtures = listPlayableFixtures(
     hasSavedBracket ? savedBracketRounds ?? [] : [],
     hasSavedLeagueSchedule ? savedLeagueRounds ?? [] : [],
@@ -578,17 +608,18 @@ function TeamDialog({
                 {groups.map((group, index) => <div className="playoff-qualifier-row" key={group.name}>
                   <strong>{group.name}</strong>
                   <label className="field-label" htmlFor={`qualifier-winner-${index}`}>Winner</label>
-                  <select id={`qualifier-winner-${index}`} value={playoffQualifiers[index].winnerId} onChange={(event) => setSelectedQualifiersByGroup((current) => ({ ...current, [group.name]: { ...playoffQualifiers[index], winnerId: event.target.value } }))}>
+                  <select id={`qualifier-winner-${index}`} value={playoffQualifiers[index].winnerId} disabled={hasSavedPlayoffs} onChange={(event) => setSelectedQualifiersByGroup((current) => ({ ...current, [group.name]: { ...playoffQualifiers[index], winnerId: event.target.value } }))}>
                     {group.teams.map((team) => <option key={team.id} value={team.id} disabled={team.id === playoffQualifiers[index].runnerUpId}>{team.name}</option>)}
                   </select>
                   <label className="field-label" htmlFor={`qualifier-runner-${index}`}>Runner-up</label>
-                  <select id={`qualifier-runner-${index}`} value={playoffQualifiers[index].runnerUpId} onChange={(event) => setSelectedQualifiersByGroup((current) => ({ ...current, [group.name]: { ...playoffQualifiers[index], runnerUpId: event.target.value } }))}>
+                  <select id={`qualifier-runner-${index}`} value={playoffQualifiers[index].runnerUpId} disabled={hasSavedPlayoffs} onChange={(event) => setSelectedQualifiersByGroup((current) => ({ ...current, [group.name]: { ...playoffQualifiers[index], runnerUpId: event.target.value } }))}>
                     {group.teams.map((team) => <option key={team.id} value={team.id} disabled={team.id === playoffQualifiers[index].winnerId}>{team.name}</option>)}
                   </select>
                 </div>)}
                 <div className="bracket-preview" aria-label="Cross-group playoff bracket preview">
                   {groupPlayoffRounds.map((round) => <div className="bracket-round" key={round.name}><h3>{round.name}</h3>{round.matches.map((match) => <div className="bracket-match" key={match.number}><span>{entrantLabel(match.teamA)}</span><span>{match.teamB ? entrantLabel(match.teamB) : ''}</span></div>)}</div>)}
                 </div>
+                {hasSavedPlayoffs ? <p className="form-note">Saved playoff bracket. Qualifiers cannot be changed yet.</p> : <div className="bracket-save"><button className="button button-primary" type="button" disabled={!hasSavedGroupStage || savingPlayoffs} onClick={saveGroupPlayoffs}>{savingPlayoffs ? 'Saving...' : 'Save playoff bracket'} <Icon name="arrow" size={16} /></button>{!hasSavedGroupStage && <small>Save the group fixtures before saving playoffs.</small>}</div>}
               </> : <p className="form-note">Playoff preview currently supports two groups.</p>}
             </div>
             {groupStageMessageTournamentId === tournament.id && groupStageMessage && <p className="form-note" role="status">{groupStageMessage}</p>}

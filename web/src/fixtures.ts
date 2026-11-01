@@ -36,6 +36,9 @@ export type GroupStageGroup = {
   rounds: RoundRobinRound[]
 }
 
+export type GroupPlayoffQualifier = { groupName: string; winnerId: string; runnerUpId: string }
+export type GroupPlayoffFixtures = { qualifiers: GroupPlayoffQualifier[]; rounds: KnockoutRound[] }
+
 export type PlayableFixture = {
   id: string
   stage: 'KNOCKOUT' | 'LEAGUE' | 'GROUP'

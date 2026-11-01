@@ -101,7 +101,40 @@ service cloud.firestore {
             && data.format == 'GROUP_STAGE'
             && data.groups is list
             && data.groups.size() >= 2
-            && data.groups.size() <= 32));
+            && data.groups.size() <= 32)
+          || (fixtureId == 'playoffs'
+            && data.keys().hasAll(['qualifiers', 'rounds'])
+            && data.keys().hasOnly(['format', 'qualifiers', 'rounds', 'createdAt', 'updatedAt'])
+            && data.format == 'GROUP_PLAYOFFS'
+            && data.qualifiers is list
+            && data.qualifiers.size() == 2
+            && data.qualifiers[0] is map
+            && data.qualifiers[1] is map
+            && data.qualifiers[0].keys().hasAll(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[0].keys().hasOnly(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[1].keys().hasAll(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[1].keys().hasOnly(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[0].groupName is string
+            && data.qualifiers[0].groupName.size() > 0
+            && data.qualifiers[1].groupName is string
+            && data.qualifiers[1].groupName.size() > 0
+            && data.qualifiers[0].groupName != data.qualifiers[1].groupName
+            && data.qualifiers[0].winnerId is string
+            && data.qualifiers[0].winnerId.size() > 0
+            && data.qualifiers[0].runnerUpId is string
+            && data.qualifiers[0].runnerUpId.size() > 0
+            && data.qualifiers[0].winnerId != data.qualifiers[0].runnerUpId
+            && data.qualifiers[1].winnerId is string
+            && data.qualifiers[1].winnerId.size() > 0
+            && data.qualifiers[1].runnerUpId is string
+            && data.qualifiers[1].runnerUpId.size() > 0
+            && data.qualifiers[1].winnerId != data.qualifiers[1].runnerUpId
+            && data.qualifiers[0].winnerId != data.qualifiers[1].winnerId
+            && data.qualifiers[0].winnerId != data.qualifiers[1].runnerUpId
+            && data.qualifiers[0].runnerUpId != data.qualifiers[1].winnerId
+            && data.qualifiers[0].runnerUpId != data.qualifiers[1].runnerUpId
+            && data.rounds is list
+            && data.rounds.size() == 2));
     }
 
     function validMatchTeam(data) {
@@ -332,8 +365,9 @@ service cloud.firestore {
 
       match /fixtures/{fixtureId} {
         allow read: if true;
-        allow create: if fixtureId in ['knockout', 'league', 'groups']
+        allow create: if fixtureId in ['knockout', 'league', 'groups', 'playoffs']
           && ownsTournament(tournamentId)
+          && (fixtureId != 'playoffs' || get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.format == 'GROUP_KNOCKOUT')
           && validFixture(request.resource.data, fixtureId)
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
