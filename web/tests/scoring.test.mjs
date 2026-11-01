@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -34,6 +34,16 @@ test('rejects malformed extras and invalid over settings', () => {
   assert.throws(() => summarizeInnings([delivery({ extrasRuns: 1 })], 6), /extras type/)
   assert.throws(() => summarizeInnings([delivery({ extrasType: 'WIDE', extrasRuns: 1 })], 6), /do not count/)
   assert.throws(() => summarizeInnings([], 0), /positive integer/)
+})
+
+test('records no-balls with batter runs without consuming a legal ball', () => {
+  const noBall = makeNoBallDelivery('batter-1', 'bowler-1', 2)
+  assert.equal(noBall.completedRuns, 2)
+  assert.equal(noBall.legalBall, false)
+  assert.equal(summarizeInnings([noBall], 6).runs, 3)
+  assert.equal(summarizeBattingScorecard([noBall], ['batter-1'])[0].ballsFaced, 1)
+  assert.equal(makeNoBallDelivery('batter-1', 'bowler-1', 4).completedRuns, 0)
+  assert.throws(() => makeNoBallDelivery('batter-1', 'bowler-1', 5), /supported/)
 })
 
 test('undo removes only the most recent delivery', () => {

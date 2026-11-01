@@ -35,6 +35,7 @@
 - [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [x] Detect and enforce innings completion at the overs limit or when all but one batter are out.
+- [x] Record batter runs and the no-ball extra together without counting a legal ball.
 - [x] Add a local-only scoring preview with run, wide, no-ball, wicket and replacement batter, recent-ball, undo, and batter-strike rotation controls.
 - [x] Connect selected-match scoring preview to restore and persist summary and over batches for organizers.
 - [ ] Complete the scoring console with real roster selection and both innings.

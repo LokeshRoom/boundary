@@ -146,6 +146,22 @@ function validateDelivery(delivery: DeliveryEvent) {
   if (typeof delivery.legalBall !== 'boolean' || typeof delivery.isWicket !== 'boolean') throw new Error('Delivery flags must be boolean values.')
 }
 
+export function makeNoBallDelivery(strikerId: string, bowlerId: string, runsOffBat: number): DeliveryEvent {
+  if (![0, 1, 2, 3, 4, 6].includes(runsOffBat)) throw new Error('Choose a supported no-ball run value.')
+  const delivery: DeliveryEvent = {
+    strikerId,
+    bowlerId,
+    completedRuns: runsOffBat < 4 ? runsOffBat : 0,
+    runsOffBat,
+    extrasType: 'NO_BALL',
+    extrasRuns: 1,
+    legalBall: false,
+    isWicket: false,
+  }
+  validateDelivery(delivery)
+  return delivery
+}
+
 export function advanceBattingEnds(
   ends: BattingEnds,
   delivery: DeliveryEvent,
