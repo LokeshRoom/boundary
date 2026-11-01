@@ -1,22 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
+import { listOwnedTournaments, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
-type Format = 'Knockout' | 'League' | 'Groups + playoffs'
-type Status = 'Registration open' | 'Upcoming' | 'Live' | 'Completed'
-
-type Tournament = {
-  name: string
-  format: Format
-  teams: number
-  status: Status
-  note: string
-}
-
 const initialTournaments: Tournament[] = [
-  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left' },
-  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings' },
-  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC' },
+  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left', overs: 20 },
+  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings', overs: 12 },
+  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC', overs: 20 },
 ]
 
 const navItems = [
@@ -51,24 +41,29 @@ function StatusPill({ status }: { status: Status }) {
 function TournamentDialog({
   dialogRef,
   onCreate,
+  canSave,
 }: {
   dialogRef: RefObject<HTMLDialogElement | null>
-  onCreate: (tournament: Tournament) => void
+  onCreate: (tournament: Tournament) => Promise<boolean>
+  canSave: boolean
 }) {
+  const [submitting, setSubmitting] = useState(false)
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const name = String(form.get('name') ?? '').trim()
-    if (!name) return
-    onCreate({
-      name,
-      format: form.get('format') as Format,
-      teams: 0,
-      status: 'Registration open',
-      note: 'Preview only',
-    })
-    event.currentTarget.reset()
-    dialogRef.current?.close()
+    const overs = Number(form.get('overs'))
+    if (!name || !Number.isInteger(overs) || overs < 1 || overs > 100) return
+
+    setSubmitting(true)
+    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', note: 'Preview only', overs })
+      .then((saved) => {
+        if (!saved) return
+        event.currentTarget.reset()
+        dialogRef.current?.close()
+      })
+      .finally(() => setSubmitting(false))
   }
 
   return (
@@ -91,10 +86,12 @@ function TournamentDialog({
           <option>League</option>
           <option>Groups + playoffs</option>
         </select>
-        <p className="form-note">This preview adds a session-only sample. Sign-in and Firebase saving are the next build step.</p>
+        <label className="field-label" htmlFor="tournament-overs">Overs per innings</label>
+        <input id="tournament-overs" name="overs" type="number" min="1" max="100" defaultValue="20" required />
+        <p className="form-note">{canSave ? 'This tournament will be saved to your Firebase account.' : 'Preview only. Sign in with Firebase configured to save tournaments.'}</p>
         <div className="dialog-actions">
           <button className="button button-quiet" type="button" onClick={() => dialogRef.current?.close()}>Cancel</button>
-          <button className="button button-primary" type="submit">Add to preview <Icon name="arrow" size={16} /></button>
+          <button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Saving...' : canSave ? 'Create tournament' : 'Add to preview'} <Icon name="arrow" size={16} /></button>
         </div>
       </form>
     </dialog>
@@ -104,6 +101,8 @@ function TournamentDialog({
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
   const [organizer, setOrganizer] = useState<string | null>(null)
+  const [organizerUid, setOrganizerUid] = useState<string | null>(null)
+  const [loadedOrganizerUid, setLoadedOrganizerUid] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -118,6 +117,7 @@ function App() {
       if (!active) return
       unsubscribe = onAuthStateChanged(auth, (user) => {
         setOrganizer(user?.displayName || user?.email || null)
+        setOrganizerUid(user?.uid ?? null)
         setAuthReady(true)
       })
     }).catch(() => {
@@ -132,6 +132,29 @@ function App() {
       unsubscribe?.()
     }
   }, [])
+
+  useEffect(() => {
+    if (!organizerUid) return
+
+    let active = true
+    void listOwnedTournaments(organizerUid).then((saved) => {
+      if (active) {
+        setTournaments(saved)
+        setLoadedOrganizerUid(organizerUid)
+      }
+    }).catch(() => {
+      if (active) {
+        setTournaments([])
+        setAuthError('Could not load your tournaments from Firestore. Check your database rules.')
+        setLoadedOrganizerUid(organizerUid)
+      }
+    })
+
+    return () => { active = false }
+  }, [organizerUid])
+
+  const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
+  const visibleTournaments = organizerUid ? tournaments : initialTournaments
 
   async function signIn() {
     setAuthBusy(true)
@@ -159,8 +182,22 @@ function App() {
     }
   }
 
-  function addTournament(tournament: Tournament) {
-    setTournaments((current) => [tournament, ...current])
+  async function addTournament(tournament: Tournament): Promise<boolean> {
+    if (!organizerUid) {
+      setTournaments((current) => [tournament, ...current])
+      return true
+    }
+
+    try {
+      const id = await saveTournament(organizerUid, tournament)
+      setTournaments((current) => [{ ...tournament, id, note: 'Saved to Firebase' }, ...current])
+      setLoadedOrganizerUid(organizerUid)
+      setAuthError('')
+      return true
+    } catch {
+      setAuthError('Could not save this tournament. Check your Firebase connection and Firestore rules.')
+      return false
+    }
   }
 
   return (
@@ -181,7 +218,7 @@ function App() {
         <div className="sidebar-spacer" />
         <div className="connection-card">
           <span className="connection-dot" />
-          <div><strong>{isFirebaseConfigured ? 'Firebase configured' : 'Preview workspace'}</strong><small>{isFirebaseConfigured ? 'Authentication setup is next' : 'Add Firebase settings to connect'}</small></div>
+          <div><strong>{organizer ? 'Organizer account' : isFirebaseConfigured ? 'Firebase configured' : 'Preview workspace'}</strong><small>{organizer ? 'Signed in' : isFirebaseConfigured ? 'Sign in to save tournaments' : 'Add Firebase settings to connect'}</small></div>
         </div>
         <div className="sidebar-foot">A clearer view of match day.</div>
       </aside>
@@ -253,8 +290,8 @@ function App() {
               <div><span className="eyebrow">The season board</span><h2>Your tournaments <span>{tournaments.length}</span></h2></div>
               <button className="text-action" type="button" onClick={() => dialogRef.current?.showModal()}>Create tournament <Icon name="arrow" size={16} /></button>
             </div>
-            <div className="tournament-list">
-              {tournaments.map((tournament, index) => (
+            {loadingTournaments ? <p className="demo-disclaimer">Loading your tournaments...</p> : visibleTournaments.length === 0 ? <p className="demo-disclaimer">No tournaments yet. Create one to start your season.</p> : <div className="tournament-list">
+              {visibleTournaments.map((tournament, index) => (
                 <article className="tournament-row" key={`${tournament.name}-${index}`}>
                   <div className={`tournament-glyph glyph-${index % 3}`}><Icon name={index % 3 === 1 ? 'score' : 'cup'} size={19} /></div>
                   <div className="tournament-name"><strong>{tournament.name}</strong><span>{tournament.format} <i /> {tournament.teams ? `${tournament.teams} teams` : 'No teams yet'}</span></div>
@@ -263,8 +300,8 @@ function App() {
                   <button className="row-open" type="button" aria-label={`Open ${tournament.name}`} onClick={() => dialogRef.current?.showModal()}><Icon name="arrow" size={17} /></button>
                 </article>
               ))}
-            </div>
-            <p className="demo-disclaimer"><Icon name="check" size={14} /> Sample details are for layout preview only. New tournaments stay in memory until you refresh.</p>
+            </div>}
+            {!organizerUid && <p className="demo-disclaimer"><Icon name="check" size={14} /> Sample details are for layout preview only. New tournaments stay in memory until you refresh.</p>}
           </section>
 
           <section className="next-steps" id="next-steps">
@@ -276,7 +313,7 @@ function App() {
           <footer className="page-footer"><span>BOUNDARY · CRICKET TOURNAMENTS</span><span>V1 PREVIEW · NO SIGN-IN OR CLOUD SYNC</span></footer>
         </div>
       </main>
-      <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} />
+      <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} canSave={Boolean(organizerUid)} />
     </div>
   )
 }
