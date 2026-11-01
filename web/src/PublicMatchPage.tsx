@@ -45,7 +45,7 @@ export default function PublicMatchPage({ tournamentId, fixtureId }: { tournamen
     <main className="public-match-shell">
       <header className="registration-brand"><span className="brand-mark"><span /><span /><span /></span><span>boundary<span className="brand-dot">.</span></span></header>
       <section className="public-match-card">
-        <div className="public-match-heading"><div><span className="eyebrow">PUBLIC SCOREBOARD</span><h1>{loading && !match ? 'Loading match…' : tournamentName || 'Match score'}</h1><p>{match ? `${match.groupName ? `${match.groupName} · ` : ''}${match.roundName} · Match ${match.matchNumber}` : 'Follow the match score and recent deliveries.'}</p></div><button className="button button-outline" type="button" disabled={loading} onClick={() => { setLoading(true); setError(''); setRefresh((current) => current + 1) }}>{loading ? 'Loading…' : 'Refresh score'}</button></div>
+        <div className="public-match-heading"><div><span className="eyebrow">PUBLIC SCOREBOARD</span><h1>{loading && !match ? 'Loading match…' : tournamentName || 'Match score'}</h1><p>{match ? `${match.groupName ? `${match.groupName} · ` : ''}${match.roundName} · Match ${match.matchNumber}` : 'Follow the match score and recent deliveries.'}</p></div><button className="button button-outline" type="button" disabled={loading || !isFirebaseConfigured} onClick={() => { setLoading(true); setError(''); setRefresh((current) => current + 1) }}>{loading ? 'Loading…' : 'Refresh score'}</button></div>
         {error ? <p className="registration-closed" role="status">{error}</p> : match && <>
           <div className="public-scoreline">
             <div><span>{match.teamA.name}</span><strong>Team A</strong></div>
