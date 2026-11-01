@@ -9,6 +9,7 @@
 - [x] Add organizer Google sign-in, sign-out, and auth-state display.
 - [x] Document the initial tournament data contract and public/private team data boundary.
 - [x] Persist organizer-owned tournament creation and load the signed-in organizer's tournaments.
+- [x] Capture and persist tournament start/end dates and primary venue.
 - [ ] Build organizer authentication and persistent tournament setup.
 - [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
 - [ ] Add public team registration, organizer approval, and roster management.

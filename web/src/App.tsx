@@ -4,9 +4,9 @@ import { listOwnedTournaments, saveTournament, type Format, type Status, type To
 import './App.css'
 
 const initialTournaments: Tournament[] = [
-  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left', overs: 20 },
-  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings', overs: 12 },
-  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC', overs: 20 },
+  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', note: '4 spots left', overs: 20, venue: 'Riverside Ground', startDate: '2026-06-14' },
+  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', note: '2nd innings', overs: 12, venue: 'Central Turf', startDate: '2026-05-03' },
+  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', note: 'Winner: Cedar CC', overs: 20, venue: 'Northside Oval', startDate: '2026-03-22' },
 ]
 
 const navItems = [
@@ -52,15 +52,26 @@ function TournamentDialog({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
+    const formElement = event.currentTarget
     const name = String(form.get('name') ?? '').trim()
     const overs = Number(form.get('overs'))
-    if (!name || !Number.isInteger(overs) || overs < 1 || overs > 100) return
+    const startDate = String(form.get('startDate') ?? '')
+    const endDate = String(form.get('endDate') ?? '')
+    const venue = String(form.get('venue') ?? '').trim()
+    if (!name || !venue || !startDate || !Number.isInteger(overs) || overs < 1 || overs > 100) return
+    const endDateInput = formElement.elements.namedItem('endDate') as HTMLInputElement
+    if (endDate && endDate < startDate) {
+      endDateInput.setCustomValidity('End date must be on or after the start date.')
+      endDateInput.reportValidity()
+      return
+    }
+    endDateInput.setCustomValidity('')
 
     setSubmitting(true)
-    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', note: 'Preview only', overs })
+    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', note: 'Preview only', overs, startDate, endDate: endDate || undefined, venue })
       .then((saved) => {
         if (!saved) return
-        event.currentTarget.reset()
+        formElement.reset()
         dialogRef.current?.close()
       })
       .finally(() => setSubmitting(false))
@@ -86,6 +97,12 @@ function TournamentDialog({
           <option>League</option>
           <option>Groups + playoffs</option>
         </select>
+        <label className="field-label" htmlFor="tournament-start-date">Start date</label>
+        <input id="tournament-start-date" name="startDate" type="date" required />
+        <label className="field-label" htmlFor="tournament-end-date">End date <span>(optional)</span></label>
+        <input id="tournament-end-date" name="endDate" type="date" onChange={(event) => event.currentTarget.setCustomValidity('')} />
+        <label className="field-label" htmlFor="tournament-venue">Venue</label>
+        <input id="tournament-venue" name="venue" placeholder="e.g. Riverside Ground" required maxLength={100} />
         <label className="field-label" htmlFor="tournament-overs">Overs per innings</label>
         <input id="tournament-overs" name="overs" type="number" min="1" max="100" defaultValue="20" required />
         <p className="form-note">{canSave ? 'This tournament will be saved to your Firebase account.' : 'Preview only. Sign in with Firebase configured to save tournaments.'}</p>
@@ -295,7 +312,7 @@ function App() {
                 <article className="tournament-row" key={`${tournament.name}-${index}`}>
                   <div className={`tournament-glyph glyph-${index % 3}`}><Icon name={index % 3 === 1 ? 'score' : 'cup'} size={19} /></div>
                   <div className="tournament-name"><strong>{tournament.name}</strong><span>{tournament.format} <i /> {tournament.teams ? `${tournament.teams} teams` : 'No teams yet'}</span></div>
-                  <div className="tournament-detail"><small>SEASON</small><span>{tournament.note === 'Preview only' ? 'Session' : index === 0 ? 'Summer' : index === 1 ? 'Weekend' : 'Spring'}</span></div>
+                  <div className="tournament-detail"><small>{tournament.startDate || 'SEASON'}</small><span>{tournament.venue || (index === 0 ? 'Summer' : index === 1 ? 'Weekend' : 'Spring')}</span></div>
                   <div className="tournament-status"><StatusPill status={tournament.status} /><small>{tournament.note}</small></div>
                   <button className="row-open" type="button" aria-label={`Open ${tournament.name}`} onClick={() => dialogRef.current?.showModal()}><Icon name="arrow" size={17} /></button>
                 </article>

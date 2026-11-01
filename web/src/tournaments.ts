@@ -11,6 +11,9 @@ export type Tournament = {
   status: Status
   note: string
   overs: number
+  startDate?: string
+  endDate?: string
+  venue?: string
 }
 
 const firestoreFormats = {
@@ -40,6 +43,9 @@ export async function saveTournament(ownerUid: string, tournament: Tournament) {
     status: 'REGISTRATION',
     organizerUid: ownerUid,
     oversPerInnings: tournament.overs,
+    startDate: tournament.startDate,
+    ...(tournament.endDate ? { endDate: tournament.endDate } : {}),
+    venue: tournament.venue,
     registrationOpen: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -61,6 +67,9 @@ export async function listOwnedTournaments(ownerUid: string): Promise<Tournament
       status: statuses[data.status] ?? 'Upcoming',
       note: 'Saved to Firebase',
       overs: data.oversPerInnings,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      venue: data.venue,
     }
   })
 }

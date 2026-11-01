@@ -11,6 +11,9 @@
 | `status` | `REGISTRATION`, `UPCOMING`, `LIVE`, or `COMPLETED` | Tournament lifecycle |
 | `organizerUid` | string | Firebase Auth UID that owns writes; visible in public reads |
 | `oversPerInnings` | integer, 1-100 | Innings limit |
+| `startDate` | `YYYY-MM-DD` string | Tournament start date |
+| `endDate` | optional `YYYY-MM-DD` string | Tournament end date; cannot precede the start date |
+| `venue` | string, 1-100 characters | Primary venue |
 | `registrationOpen` | boolean | Whether team registration is open |
 | `createdAt`, `updatedAt` | Firestore timestamps | Server timestamps; updates must preserve `createdAt` |
 

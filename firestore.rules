@@ -9,11 +9,11 @@ service cloud.firestore {
     function validTournament(data) {
       return data.keys().hasAll([
           'name', 'format', 'status', 'organizerUid', 'oversPerInnings',
-          'registrationOpen', 'createdAt', 'updatedAt'
+          'registrationOpen', 'createdAt', 'updatedAt', 'startDate', 'venue'
         ])
         && data.keys().hasOnly([
           'name', 'format', 'status', 'organizerUid', 'oversPerInnings',
-          'registrationOpen', 'createdAt', 'updatedAt'
+          'registrationOpen', 'createdAt', 'updatedAt', 'startDate', 'endDate', 'venue'
         ])
         && data.name is string
         && data.name.size() > 0
@@ -26,6 +26,16 @@ service cloud.firestore {
         && data.oversPerInnings > 0
         && data.oversPerInnings <= 100
         && data.registrationOpen is bool
+        && data.startDate is string
+        && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.venue is string
+        && data.venue.size() > 0
+        && data.venue.size() <= 100
+        && (!data.keys().hasAny(['endDate']) || (
+          data.endDate is string
+          && data.endDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+          && data.endDate >= data.startDate
+        ))
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
