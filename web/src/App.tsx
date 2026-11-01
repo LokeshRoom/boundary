@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type RoundRobinRound } from './fixtures'
+import { summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { getGroupStageFixtures, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -555,6 +556,7 @@ function TeamDialog({
 
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
+  const [previewDeliveries, setPreviewDeliveries] = useState<DeliveryEvent[]>([])
   const [organizer, setOrganizer] = useState<string | null>(null)
   const [organizerUid, setOrganizerUid] = useState<string | null>(null)
   const [loadedOrganizerUid, setLoadedOrganizerUid] = useState<string | null>(null)
@@ -612,6 +614,19 @@ function App() {
 
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
   const visibleTournaments = organizerUid ? tournaments : initialTournaments
+  const previewScore = summarizeInnings(previewDeliveries, 6)
+
+  function recordPreviewDelivery(delivery: DeliveryEvent) {
+    setPreviewDeliveries((current) => [...current, delivery])
+  }
+
+  function recordPreviewRuns(runsOffBat: number) {
+    recordPreviewDelivery({ strikerId: 'preview-batter', bowlerId: 'preview-bowler', runsOffBat, extrasRuns: 0, legalBall: true, isWicket: false })
+  }
+
+  function recordPreviewExtra(extrasType: 'WIDE' | 'NO_BALL') {
+    recordPreviewDelivery({ strikerId: 'preview-batter', bowlerId: 'preview-bowler', runsOffBat: 0, extrasType, extrasRuns: 1, legalBall: false, isWicket: false })
+  }
 
   async function signIn() {
     setAuthBusy(true)
@@ -723,27 +738,36 @@ function App() {
           <section className="overview-grid" aria-label="Season overview">
             <article className="live-card" id="live-score">
               <div className="live-card-top">
-                <span className="live-label"><span className="pulse-dot" /> SAMPLE LIVE SCORE</span>
-                <span className="match-series">Sunday Turf League · Match 08</span>
+                <span className="live-label"><span className="pulse-dot" /> SCORING PREVIEW</span>
+                <span className="match-series">Sunday Turf League · Sample match</span>
               </div>
               <div className="live-scoreline">
                 <div className="team-block">
                   <span className="team-crest crest-cedar">CC</span>
                   <div><strong>Cedar CC</strong><small>Batting</small></div>
                 </div>
-                <div className="score-block"><strong>126<span>/4</span></strong><small>16.2 overs</small></div>
+                <div className="score-block"><strong>{previewScore.runs}<span>/{previewScore.wickets}</span></strong><small>{previewScore.overs} overs · {previewScore.runRate.toFixed(2)} RPO</small></div>
                 <span className="versus">V</span>
                 <div className="team-block team-away">
                   <span className="team-crest crest-ridge">RC</span>
-                  <div><strong>Ridge Club</strong><small>Target 171</small></div>
+                  <div><strong>Ridge Club</strong><small>Opponent</small></div>
                 </div>
               </div>
               <div className="live-card-bottom">
-                <div className="current-batters"><span>ON STRIKE</span><strong>M. Patel <b>48</b> <small>(31)</small></strong><strong>J. Cole <b>22</b> <small>(18)</small></strong></div>
-                <div className="run-rate"><span>REQUIRED</span><strong>12.27 <small>RPO</small></strong></div>
+                <div className="current-batters"><span>INNINGS</span><strong>Cedar CC batting</strong></div>
+                <div className="run-rate"><span>LEGAL BALLS</span><strong>{previewScore.legalBalls}</strong></div>
               </div>
-              <div className="ball-strip" aria-label="Recent deliveries: one, dot, four, wicket, two, wide">
-                <span>RECENT BALLS</span><b>1</b><b className="ball-dot">·</b><b className="ball-boundary">4</b><b className="ball-wicket">W</b><b>2</b><b className="ball-extra">WD</b>
+              <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
+                <span>RECENT BALLS</span>{previewDeliveries.slice(-8).length ? previewDeliveries.slice(-8).map((delivery, index) => <b className={delivery.extrasType ? 'ball-extra' : delivery.runsOffBat === 4 || delivery.runsOffBat === 6 ? 'ball-boundary' : delivery.runsOffBat === 0 ? 'ball-dot' : undefined} key={`${previewDeliveries.length}-${index}`}>{delivery.extrasType === 'WIDE' ? 'WD' : delivery.extrasType === 'NO_BALL' ? 'NB' : delivery.runsOffBat || '·'}</b>) : <small>No deliveries yet</small>}
+              </div>
+              <div className="scoring-preview" aria-label="Sample scoring controls">
+                <span>ADD DELIVERY</span>
+                <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
+                  <button className="score-key score-key-extra" type="button" onClick={() => recordPreviewExtra('WIDE')}>WD</button>
+                  <button className="score-key score-key-extra" type="button" onClick={() => recordPreviewExtra('NO_BALL')}>NB</button>
+                  <button className="score-key score-key-undo" type="button" disabled={!previewDeliveries.length} onClick={() => setPreviewDeliveries((current) => undoLastDelivery(current))}>Undo last</button>
+                </div>
+                <small>Preview only · score resets when the page reloads.</small>
               </div>
             </article>
 

@@ -81,6 +81,16 @@ h1, h2, p { margin-top: 0; }
 .ball-strip .ball-boundary { border-color: #d4e3b3; color: #243d30; background: #d4e3b3; }
 .ball-strip .ball-wicket { border-color: #d47b61; color: #fff; background: #b95f49; }
 .ball-strip .ball-extra { width: 27px; border-radius: 10px; color: #f4ca8f; }
+.scoring-preview { position: relative; z-index: 1; display: grid; gap: 8px; margin-top: 13px; padding-top: 11px; border-top: 1px solid #ffffff20; }
+.scoring-preview > span { color: #a9c0ae; font-size: 8px; font-weight: 800; letter-spacing: .08em; }
+.scoring-keypad { display: flex; flex-wrap: wrap; gap: 6px; }
+.score-key { min-width: 34px; height: 30px; padding: 0 9px; border: 1px solid #ffffff35; border-radius: 6px; color: #f5f6ef; background: #ffffff0b; cursor: pointer; font: inherit; font-size: 10px; font-weight: 700; }
+.score-key:hover:not(:disabled) { border-color: #d8e7cd; background: #ffffff18; }
+.score-key:focus-visible { outline: 2px solid #d8e7cd; outline-offset: 2px; }
+.score-key-extra { color: #f4ca8f; }
+.score-key-undo { margin-left: auto; }
+.score-key:disabled { cursor: not-allowed; opacity: .45; }
+.scoring-preview > small { color: #a9c0ae; font-size: 8px; }
 .season-note { display: flex; flex-direction: column; align-items: flex-start; padding: 22px 21px; border: 1px solid #e3e8dd; border-radius: 12px; background: #fff; }
 .note-icon { display: grid; width: 36px; height: 36px; margin-bottom: 23px; place-items: center; border-radius: 8px; color: #56784d; background: #eef4e7; }
 .season-note .eyebrow { font-size: 9px; }
@@ -215,6 +225,9 @@ h1, h2, p { margin-top: 0; }
   .run-rate { margin-left: auto; }
   .ball-strip { gap: 5px; margin-top: 11px; }
   .ball-strip b { width: 19px; height: 19px; }
+  .scoring-preview { margin-top: 11px; }
+  .scoring-keypad { gap: 5px; }
+  .score-key { min-width: 31px; height: 29px; padding: 0 7px; }
   .tournament-section { margin-top: 28px; }
   .section-heading { align-items: flex-end; }
   .section-heading h2 { font-size: 18px; }
