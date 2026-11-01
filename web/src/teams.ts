@@ -94,6 +94,19 @@ export async function approveTeamRegistration(tournamentId: string, registration
   })
 }
 
+export async function rejectTeamRegistration(tournamentId: string, registrationId: string): Promise<void> {
+  const { firestore, collection, doc, getDocs, runTransaction } = await getFirebaseFirestore()
+  const registrationRef = doc(firestore, 'tournaments', tournamentId, 'pendingRegistrations', registrationId)
+  const players = await getDocs(collection(registrationRef, 'players'))
+
+  await runTransaction(firestore, async (transaction) => {
+    const registration = await transaction.get(registrationRef)
+    if (!registration.exists()) throw new Error('Registration is no longer pending')
+    for (const player of players.docs) transaction.delete(player.ref)
+    transaction.delete(registrationRef)
+  })
+}
+
 export async function createTeam(tournamentId: string, team: NewTeam): Promise<Team> {
   const { firestore, collection, doc, increment, serverTimestamp, writeBatch } = await getFirebaseFirestore()
   const teamRef = doc(collection(firestore, 'tournaments', tournamentId, 'teams'))
