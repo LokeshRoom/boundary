@@ -190,6 +190,11 @@ h1, h2, p { margin-top: 0; }
 .bracket-round h3 { margin: 0; color: #69766c; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .bracket-match { display: grid; gap: 4px; padding: 9px; border: 1px solid #e2e9e0; border-radius: 6px; font-size: 11px; }
 .bracket-match small { color: #728176; font-size: 9px; }
+.playoff-qualifiers { display: grid; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e9e0; }
+.playoff-qualifiers > h3 { margin: 0; color: #253b2e; font-family: 'Barlow Condensed', sans-serif; font-size: 19px; }
+.playoff-qualifier-row { display: grid; grid-template-columns: auto minmax(90px, 1fr) minmax(110px, 1.5fr) minmax(90px, 1fr) minmax(110px, 1.5fr); align-items: center; gap: 8px; }
+.playoff-qualifier-row select { min-width: 0; height: 34px; padding: 0 8px; border: 1px solid #d8e0d8; border-radius: 6px; color: #253b2e; background: #fff; font: inherit; font-size: 11px; }
+@media (max-width: 560px) { .playoff-qualifier-row { grid-template-columns: auto 1fr 1.5fr; } .playoff-qualifier-row .field-label:nth-of-type(2) { grid-column: 2; } }
 .bracket-save { display: grid; justify-items: start; gap: 7px; margin-top: 8px; }
 .league-schedule { display: grid; gap: 6px; }
 .league-round { border: 1px solid #e2e9e0; border-radius: 6px; }

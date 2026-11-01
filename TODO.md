@@ -33,7 +33,8 @@
 - [x] Identify concrete playable matches from saved knockout, league, and group schedules.
 - [x] Select a saved fixture into the session-only scoring preview.
 - [x] Generate a cross-group semifinal bracket from selected qualifiers in a two-group stage.
-- [ ] Add qualifier selection UI and persist the group-stage playoff bracket.
+- [x] Select winners and runners-up and preview cross-group semifinals for a two-group stage.
+- [ ] Persist the selected group-stage playoff bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [x] Detect and enforce innings completion at the overs limit or when all but one batter are out.
 - [x] Record batter runs and the no-ball extra together without counting a legal ball.
