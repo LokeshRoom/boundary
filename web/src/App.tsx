@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
-import { generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant } from './fixtures'
+import { generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type RoundRobinRound } from './fixtures'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { listOwnedTournaments, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
+import { getRoundRobinFixtures, listOwnedTournaments, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const initialTournaments: Tournament[] = [
@@ -153,6 +153,9 @@ function TeamDialog({
   const [playersLoading, setPlayersLoading] = useState(false)
   const [bracketTournamentId, setBracketTournamentId] = useState<string | null>(null)
   const [leagueScheduleTournamentId, setLeagueScheduleTournamentId] = useState<string | null>(null)
+  const [savedLeagueScheduleTournamentId, setSavedLeagueScheduleTournamentId] = useState<string | null>(null)
+  const [savedLeagueRounds, setSavedLeagueRounds] = useState<RoundRobinRound[] | null>(null)
+  const [loadingLeagueSchedule, setLoadingLeagueSchedule] = useState(false)
   const [savingLeagueSchedule, setSavingLeagueSchedule] = useState(false)
   const [leagueScheduleMessage, setLeagueScheduleMessage] = useState('')
   const [leagueScheduleMessageTournamentId, setLeagueScheduleMessageTournamentId] = useState<string | null>(null)
@@ -253,6 +256,31 @@ function TeamDialog({
     }).finally(() => setSubmitting(false))
   }
 
+  function toggleLeagueSchedule() {
+    if (!tournament?.id) return
+    if (showLeagueSchedule) {
+      setLeagueScheduleTournamentId(null)
+      return
+    }
+
+    const tournamentId = tournament.id
+    setLeagueScheduleTournamentId(tournamentId)
+    setLoadingLeagueSchedule(true)
+    setLeagueScheduleMessage('')
+    void getRoundRobinFixtures(tournamentId).then((saved) => {
+      setSavedLeagueScheduleTournamentId(tournamentId)
+      setSavedLeagueRounds(saved)
+      if (saved) setLeagueScheduleMessage('Saved schedule loaded.')
+    }).catch(() => {
+      setSavedLeagueScheduleTournamentId(tournamentId)
+      setSavedLeagueRounds(null)
+      setLeagueScheduleMessage('Could not load the saved schedule. Check Firestore rules and connection.')
+    }).finally(() => {
+      setLeagueScheduleMessageTournamentId(tournamentId)
+      setLoadingLeagueSchedule(false)
+    })
+  }
+
   function toggleRegistration() {
     if (!tournament?.id || !canManage || !['Registration open', 'Registration closed'].includes(tournament.status)) return
     const registrationOpen = !tournament.registrationOpen
@@ -324,6 +352,8 @@ function TeamDialog({
     setLeagueScheduleMessage('')
     try {
       await saveRoundRobinFixtures(tournament.id, leagueRounds)
+      setSavedLeagueScheduleTournamentId(tournament.id)
+      setSavedLeagueRounds(leagueRounds)
       setLeagueScheduleMessage('Schedule saved. A saved schedule cannot be replaced yet.')
     } catch {
       setLeagueScheduleMessage('Could not save the schedule. It may already exist, or Firestore rules may need an update.')
@@ -335,11 +365,12 @@ function TeamDialog({
 
   const showBracket = bracketTournamentId === tournament?.id
   const showLeagueSchedule = leagueScheduleTournamentId === tournament?.id
+  const hasSavedLeagueSchedule = savedLeagueScheduleTournamentId === tournament?.id && savedLeagueRounds !== null
   const knockoutRounds = showBracket && !loading && tournament?.format === 'Knockout' && teams.length >= 2
     ? generateKnockoutRounds(teams)
     : []
-  const leagueRounds = showLeagueSchedule && !loading && tournament?.format === 'League' && teams.length >= 2 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
-    ? generateRoundRobinRounds(teams)
+  const leagueRounds = showLeagueSchedule && !loading && !loadingLeagueSchedule && tournament?.format === 'League' && teams.length >= 2 && teams.length <= ROUND_ROBIN_TEAM_LIMIT
+    ? hasSavedLeagueSchedule ? savedLeagueRounds : generateRoundRobinRounds(teams)
     : []
 
   return (
@@ -372,7 +403,7 @@ function TeamDialog({
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>
           {tournament?.format === 'Knockout' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2} onClick={() => setBracketTournamentId(showBracket ? null : tournament.id ?? null)}>{showBracket ? 'Hide bracket preview' : 'Preview knockout bracket'}</button>}
-          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || teams.length < 2 || teams.length > ROUND_ROBIN_TEAM_LIMIT} onClick={() => setLeagueScheduleTournamentId(showLeagueSchedule ? null : tournament.id ?? null)}>{showLeagueSchedule ? 'Hide schedule preview' : 'Preview round-robin schedule'}</button>}
+          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || loadingLeagueSchedule || teams.length < 2 || teams.length > ROUND_ROBIN_TEAM_LIMIT} onClick={toggleLeagueSchedule}>{showLeagueSchedule ? 'Hide schedule preview' : 'Preview round-robin schedule'}</button>}
           {tournament?.format === 'League' && teams.length > ROUND_ROBIN_TEAM_LIMIT && <p className="form-note">Round-robin schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p>}
           {knockoutRounds.length > 0 && <section aria-label="Knockout bracket preview">
             <p className="form-note">Preview only. Byes go to teams in the listed order.</p>
@@ -391,16 +422,17 @@ function TeamDialog({
             </div>
           </section>}
           {leagueRounds.length > 0 && <section className="league-schedule" aria-label="Round-robin schedule preview">
-            <p className="form-note">Preview only · each team plays every other team once.</p>
+            <p className="form-note">{hasSavedLeagueSchedule ? 'Saved schedule · each team plays every other team once.' : 'Preview only · each team plays every other team once.'}</p>
             {leagueRounds.map((round) => <details className="league-round" key={round.name}>
               <summary>{round.name}<span>{round.matches.length} fixtures</span></summary>
               <div className="league-fixtures">{round.matches.map((match, index) => <div className="league-fixture" key={`${round.name}-${index}`}><strong>{match.teamA.name}</strong><span>{match.bye ? 'Bye' : 'vs'}</span>{match.teamB && <strong>{match.teamB.name}</strong>}</div>)}</div>
             </details>)}
-            <div className="bracket-save">
+            {!hasSavedLeagueSchedule && <div className="bracket-save">
               <button className="button button-primary" type="button" disabled={savingLeagueSchedule} onClick={saveLeagueSchedule}>{savingLeagueSchedule ? 'Saving...' : 'Save schedule'} <Icon name="arrow" size={16} /></button>
-              {leagueScheduleMessageTournamentId === tournament.id && leagueScheduleMessage && <p className="form-note" role="status">{leagueScheduleMessage}</p>}
-            </div>
+            </div>}
+            {leagueScheduleMessageTournamentId === tournament.id && leagueScheduleMessage && <p className="form-note" role="status">{leagueScheduleMessage}</p>}
           </section>}
+          {showLeagueSchedule && loadingLeagueSchedule && <p className="form-note" role="status">Checking for a saved schedule...</p>}
           {activeTeam && <section className="roster-panel" aria-labelledby="roster-title">
             <div className="roster-heading"><h3 id="roster-title">{activeTeam.name} roster</h3><button className="roster-action" type="button" onClick={() => setActiveTeam(null)}>All teams</button></div>
             <div className="player-list" aria-live="polite">

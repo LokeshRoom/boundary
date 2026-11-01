@@ -143,3 +143,13 @@ export async function saveRoundRobinFixtures(tournamentId: string, rounds: Round
     })
   })
 }
+
+export async function getRoundRobinFixtures(tournamentId: string): Promise<RoundRobinRound[] | null> {
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'tournaments', tournamentId, 'fixtures', 'league'))
+  if (!snapshot.exists()) return null
+
+  const fixture = snapshot.data()
+  if (fixture.format !== 'ROUND_ROBIN' || !Array.isArray(fixture.rounds)) throw new Error('Saved league fixtures have an invalid format.')
+  return fixture.rounds as RoundRobinRound[]
+}
