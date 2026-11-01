@@ -42,7 +42,13 @@ test('records no-balls with batter runs without consuming a legal ball', () => {
   assert.equal(noBall.legalBall, false)
   assert.equal(summarizeInnings([noBall], 6).runs, 3)
   assert.equal(summarizeBattingScorecard([noBall], ['batter-1'])[0].ballsFaced, 1)
-  assert.equal(makeNoBallDelivery('batter-1', 'bowler-1', 4).completedRuns, 0)
+  assert.equal(summarizeBowlingScorecard([noBall], ['bowler-1'], 6)[0].runsConceded, 3)
+  const ends = { strikerId: 'batter-1', nonStrikerId: 'batter-2' }
+  assert.deepEqual(advanceBattingEnds(ends, noBall, 0, 6), ends)
+  assert.deepEqual(advanceBattingEnds(ends, makeNoBallDelivery('batter-1', 'bowler-1', 1), 0, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
+  const boundaryNoBall = makeNoBallDelivery('batter-1', 'bowler-1', 4)
+  assert.equal(boundaryNoBall.completedRuns, 0)
+  assert.deepEqual(advanceBattingEnds(ends, boundaryNoBall, 0, 6), ends)
   assert.throws(() => makeNoBallDelivery('batter-1', 'bowler-1', 5), /supported/)
 })
 
