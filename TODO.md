@@ -7,8 +7,9 @@
 - [x] Add Firebase web SDK initialization with optional environment-based configuration.
 - [x] Defer Firebase Auth and Firestore SDK loading until a Firebase-backed feature requests it.
 - [x] Add organizer Google sign-in, sign-out, and auth-state display.
+- [x] Document the initial tournament data contract and public/private team data boundary.
 - [ ] Build organizer authentication and persistent tournament setup.
-- [ ] Define Firestore documents and security rules; keep captain contact details out of public team records.
+- [ ] Implement and emulator-test Firestore rules for tournament ownership and team registration privacy.
 - [ ] Add public team registration, organizer approval, and roster management.
 - [ ] Generate knockout, round-robin, and group-stage fixtures.
 - [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
