@@ -28,6 +28,11 @@ export type RegistrationTournament = {
   isOpen: boolean
 }
 
+export type PublicTournamentScoreSettings = {
+  name: string
+  ballsPerOver: number
+}
+
 function liveMatchDocumentId(tournamentId: string, fixtureId: string) {
   return `${tournamentId}_${fixtureId}`
 }
@@ -77,6 +82,16 @@ export async function getPublicLiveMatchSummary(tournamentId: string, fixtureId:
   const { firestore, doc, getDoc } = await getFirebaseFirestore()
   const snapshot = await getDoc(doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixtureId)))
   return snapshot.exists() ? parsePublicLiveMatchSummary(snapshot.data(), tournamentId, fixtureId, ballsPerOver) : null
+}
+
+export async function getPublicTournamentScoreSettings(tournamentId: string): Promise<PublicTournamentScoreSettings | null> {
+  if (!tournamentId.trim() || tournamentId.includes('/')) throw new Error('A valid tournament ID is required.')
+  const { firestore, doc, getDoc } = await getFirebaseFirestore()
+  const snapshot = await getDoc(doc(firestore, 'tournaments', tournamentId))
+  if (!snapshot.exists()) return null
+  const data = snapshot.data()
+  if (typeof data.name !== 'string' || !data.name.trim() || !Number.isInteger(data.ballsPerOver) || data.ballsPerOver < 1 || data.ballsPerOver > 12) throw new Error('Saved tournament score settings are invalid.')
+  return { name: data.name, ballsPerOver: data.ballsPerOver }
 }
 
 export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number) {

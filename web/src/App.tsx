@@ -921,6 +921,7 @@ function App() {
               <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.isWicket ? 'wicket' : delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
                 <span>RECENT BALLS</span>{previewDeliveries.slice(-8).length ? previewDeliveries.slice(-8).map((delivery, index) => <b className={delivery.isWicket ? 'ball-wicket' : delivery.extrasType ? 'ball-extra' : delivery.runsOffBat === 4 || delivery.runsOffBat === 6 ? 'ball-boundary' : delivery.runsOffBat === 0 ? 'ball-dot' : undefined} key={`${previewDeliveries.length}-${index}`}>{delivery.isWicket ? 'W' : delivery.extrasType === 'WIDE' ? 'WD' : delivery.extrasType === 'NO_BALL' ? 'NB' : delivery.runsOffBat || '·'}</b>) : <small>No deliveries yet</small>}
               </div>
+              {previewMatch?.tournamentId && <a className="public-score-link" href={`/t/${encodeURIComponent(previewMatch.tournamentId)}/match/${encodeURIComponent(previewMatch.fixture.id)}`} target="_blank" rel="noreferrer">Open public scoreboard ↗</a>}
               <details className="preview-scorecard">
                 <summary><span>INNINGS SCORECARD</span><strong>{previewScore.runs}/{previewScore.wickets} <small>· {previewScore.overs} ov</small></strong></summary>
                 <div className="preview-scorecard-scroll">

@@ -1,0 +1,31 @@
+.public-match-shell { min-height: 100vh; padding: 32px 20px 64px; }
+.public-match-shell .registration-brand { max-width: 760px; }
+.public-match-card { display: grid; max-width: 760px; gap: 22px; margin: 0 auto; padding: clamp(20px, 5vw, 34px); border: 1px solid #e1e8df; border-radius: 14px; background: #fff; box-shadow: 0 20px 60px #20362812; }
+.public-match-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.public-match-heading h1 { margin: 5px 0 3px; color: #233c2d; font-family: 'Barlow Condensed', sans-serif; font-size: clamp(28px, 6vw, 40px); line-height: 1; }
+.public-match-heading p { margin: 0; color: #748076; font-size: 12px; }
+.public-scoreline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, auto) minmax(0, 1fr); align-items: center; gap: 12px; padding: 22px; border-radius: 10px; color: #f5f6ef; background: #214a37; }
+.public-scoreline > div { display: grid; gap: 5px; min-width: 0; }
+.public-scoreline > div:last-child { text-align: right; }
+.public-scoreline > div span { overflow-wrap: anywhere; font-weight: 700; }
+.public-scoreline > div strong { color: #b7cabb; font-size: 10px; font-weight: 500; }
+.public-scoreline > p { display: grid; gap: 4px; margin: 0; text-align: center; white-space: nowrap; }
+.public-scoreline > p strong { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(30px, 6vw, 42px); line-height: 1; }
+.public-scoreline > p span { color: #c5d6c8; font-size: 10px; }
+.public-recent-balls { display: grid; gap: 12px; }
+.public-recent-balls h2 { display: flex; align-items: baseline; justify-content: space-between; margin: 0; color: #253b2e; font-family: 'Barlow Condensed', sans-serif; font-size: 23px; }
+.public-recent-balls h2 span { color: #748076; font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500; }
+.public-recent-balls ol { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.public-recent-balls li { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #dfe8d5; border-radius: 50%; color: #365642; background: #f4f8ed; font-size: 11px; font-weight: 700; }
+.public-recent-balls li.public-ball-wicket { border-color: #b95f49; color: #fff; background: #b95f49; }
+.public-recent-balls li.public-ball-extra { color: #805b29; background: #fbf2e8; }
+.public-recent-balls > p, .public-match-note { margin: 0; color: #748076; font-size: 11px; line-height: 1.5; }
+@media (max-width: 520px) {
+  .public-match-shell { padding: 24px 14px 40px; }
+  .public-match-card { gap: 18px; padding: 18px 14px; }
+  .public-match-heading { align-items: flex-start; }
+  .public-match-heading .button { flex: 0 0 auto; min-height: 35px; padding: 0 9px; font-size: 10px; }
+  .public-scoreline { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; padding: 18px 12px; }
+  .public-scoreline > p strong { font-size: 32px; }
+  .public-scoreline > p span { font-size: 9px; }
+}

@@ -51,6 +51,7 @@
 - [ ] Emulator-test public live match and over reads with organizer-only writes.
 - [x] Compose complete innings scorecards from innings, batting, and bowling summaries.
 - [ ] Publish full scorecards for completed and live matches.
+- [x] Open a shareable public live-score page for a selected match.
 - [x] Add a validated single-document reader for public live match summaries.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.
