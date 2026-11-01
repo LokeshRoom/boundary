@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -98,6 +98,11 @@ test('groups historical deliveries by legal over without splitting wides or no-b
   assert.deepEqual(batches.map(({ overNumber, deliveries: over }) => [overNumber, over.length]), [[1, 5], [2, 2]])
   assert.deepEqual(groupDeliveriesByOver([], 6), [])
   assert.throws(() => groupDeliveriesByOver(deliveries, 0), /positive integer/)
+  assert.deepEqual(flattenOverBatches(batches, 3), deliveries)
+  assert.deepEqual(flattenOverBatches([], 3), [])
+  assert.throws(() => flattenOverBatches([{ overNumber: 2, deliveries: [delivery()] }], 3), /numbered consecutively/)
+  assert.throws(() => flattenOverBatches([{ overNumber: 1, deliveries: [delivery()] }, { overNumber: 2, deliveries: [delivery()] }], 3), /full legal-ball limit/)
+  assert.throws(() => flattenOverBatches([{ overNumber: 1, deliveries: Array.from({ length: 4 }, () => delivery()) }], 3), /cannot exceed/)
 })
 
 test('composes an innings total with batting and bowling figures', () => {

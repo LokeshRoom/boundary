@@ -251,3 +251,16 @@ export function groupDeliveriesByOver(deliveries: readonly DeliveryEvent[], ball
 
   return overs
 }
+
+export function flattenOverBatches(batches: readonly OverDeliveryBatch[], ballsPerOver: number): DeliveryEvent[] {
+  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+
+  return batches.flatMap((batch, index) => {
+    if (batch.overNumber !== index + 1 || !Array.isArray(batch.deliveries) || batch.deliveries.length === 0) throw new Error('Over batches must be non-empty and numbered consecutively from 1.')
+    batch.deliveries.forEach(validateDelivery)
+    const legalBalls = batch.deliveries.reduce((total, delivery) => total + Number(delivery.legalBall), 0)
+    if (legalBalls > ballsPerOver) throw new Error('An over batch cannot exceed its legal-ball limit.')
+    if (index < batches.length - 1 && legalBalls !== ballsPerOver) throw new Error('Every non-final over batch must contain its full legal-ball limit.')
+    return batch.deliveries
+  })
+}
