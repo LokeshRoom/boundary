@@ -30,7 +30,9 @@
 - [x] Preview configurable group-stage round-robin schedules.
 - [x] Persist and reload generated group-stage fixtures.
 - [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
-- [ ] Implement ball-by-ball scoring, scorecard stats, and undo.
+- [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
+- [ ] Build the organizer ball-by-ball scoring console and persist match/over state.
+- [ ] Calculate batter and bowler scorecard statistics from delivery history.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
 - [ ] Calculate standings and net run rate; render brackets.
 - [ ] Verify Firebase Spark limits, production rules, and Firebase Hosting deployment.

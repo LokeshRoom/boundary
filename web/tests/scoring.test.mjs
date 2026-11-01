@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+
+const delivery = (overrides = {}) => ({ runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
+
+test('summarizes runs, extras, wickets, legal balls, overs, and run rate', () => {
+  const deliveries = [
+    delivery({ runsOffBat: 4 }),
+    delivery({ extrasType: 'WIDE', extrasRuns: 2, legalBall: false }),
+    delivery({ runsOffBat: 2, extrasType: 'NO_BALL', extrasRuns: 1, legalBall: false }),
+    delivery({ extrasType: 'BYE', extrasRuns: 1 }),
+    delivery({ isWicket: true }),
+    delivery({ runsOffBat: 1 }),
+  ]
+
+  assert.deepEqual(summarizeInnings(deliveries, 6), {
+    runsOffBat: 7,
+    wickets: 1,
+    legalBalls: 4,
+    overs: '0.4',
+    runRate: 16.5,
+    extras: { WIDE: 2, NO_BALL: 1, BYE: 1, LEG_BYE: 0, PENALTY: 0 },
+    runs: 11,
+  })
+})
+
+test('formats completed overs and handles a score before the first legal ball', () => {
+  assert.equal(summarizeInnings(Array.from({ length: 6 }, () => delivery()), 6).overs, '1.0')
+  assert.equal(summarizeInnings([delivery({ extrasType: 'WIDE', extrasRuns: 1, legalBall: false })], 6).runRate, 0)
+})
+
+test('rejects malformed extras and invalid over settings', () => {
+  assert.throws(() => summarizeInnings([delivery({ extrasRuns: 1 })], 6), /extras type/)
+  assert.throws(() => summarizeInnings([delivery({ extrasType: 'WIDE', extrasRuns: 1 })], 6), /do not count/)
+  assert.throws(() => summarizeInnings([], 0), /positive integer/)
+})
+
+test('undo removes only the most recent delivery', () => {
+  const deliveries = [delivery({ runsOffBat: 1 }), delivery({ runsOffBat: 4 })]
+  assert.deepEqual(undoLastDelivery(deliveries), [deliveries[0]])
+  assert.deepEqual(undoLastDelivery([]), [])
+})
