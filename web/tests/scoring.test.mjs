@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildInningsScorecard, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
-const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
+const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
 test('summarizes runs, extras, wickets, legal balls, overs, and run rate', () => {
   const deliveries = [
@@ -124,4 +124,15 @@ test('ends an innings at the legal-ball limit or when all but one batter are out
     delivery({ isWicket: true, dismissedBatterId: 'batter-2', dismissalType: 'CAUGHT' }),
   ], 20, 3, 6), true)
   assert.throws(() => isInningsComplete([], 0, 11, 6), /Overs limit/)
+})
+
+test('rotates the strike on odd completed runs and at the end of a legal over', () => {
+  const ends = { strikerId: 'batter-1', nonStrikerId: 'batter-2' }
+  assert.deepEqual(advanceBattingEnds(ends, delivery({ completedRuns: 1 }), 0, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
+  assert.deepEqual(advanceBattingEnds(ends, delivery({ legalBall: false }), 5, 6), ends)
+  assert.deepEqual(advanceBattingEnds(ends, delivery(), 5, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
+  assert.deepEqual(advanceBattingEnds(ends, delivery({ completedRuns: 1 }), 5, 6), ends)
+  assert.deepEqual(getBattingEndsAfter([delivery({ completedRuns: 1 }), delivery({ strikerId: 'batter-2' })], ends, 6), { strikerId: 'batter-2', nonStrikerId: 'batter-1' })
+  assert.throws(() => advanceBattingEnds(ends, delivery({ strikerId: 'batter-2' }), 0, 6), /striker end/)
+  assert.throws(() => advanceBattingEnds(ends, delivery({ isWicket: true, dismissedBatterId: 'batter-1', dismissalType: 'BOWLED' }), 0, 6), /replacement batter/)
 })

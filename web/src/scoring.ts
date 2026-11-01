@@ -4,6 +4,7 @@ export type DismissalType = 'BOWLED' | 'CAUGHT' | 'LBW' | 'RUN_OUT' | 'STUMPED' 
 export type DeliveryEvent = {
   strikerId: string
   bowlerId: string
+  completedRuns: number
   dismissedBatterId?: string
   dismissalType?: DismissalType
   runsOffBat: number
@@ -53,11 +54,17 @@ export type InningsScorecard = {
   bowling: BowlerSummary[]
 }
 
+export type BattingEnds = {
+  strikerId: string
+  nonStrikerId: string
+}
+
 const extrasTypes: ExtrasType[] = ['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY']
 
 function validateDelivery(delivery: DeliveryEvent) {
   if (typeof delivery.strikerId !== 'string' || !delivery.strikerId.trim()) throw new Error('A striker ID is required for each delivery.')
   if (typeof delivery.bowlerId !== 'string' || !delivery.bowlerId.trim()) throw new Error('A bowler ID is required for each delivery.')
+  if (!Number.isInteger(delivery.completedRuns) || delivery.completedRuns < 0) throw new Error('Completed runs must be a non-negative integer.')
   if (delivery.dismissedBatterId !== undefined && (typeof delivery.dismissedBatterId !== 'string' || !delivery.dismissedBatterId.trim())) throw new Error('A dismissed batter ID must be a non-empty string.')
   if (delivery.dismissalType && !['BOWLED', 'CAUGHT', 'LBW', 'RUN_OUT', 'STUMPED', 'HIT_WICKET', 'RETIRED_OUT'].includes(delivery.dismissalType)) throw new Error('Unknown dismissal type.')
   if (delivery.isWicket !== Boolean(delivery.dismissedBatterId) || delivery.isWicket !== Boolean(delivery.dismissalType)) throw new Error('Wicket deliveries must identify the dismissed batter and dismissal type.')
@@ -68,6 +75,36 @@ function validateDelivery(delivery: DeliveryEvent) {
   if (['WIDE', 'NO_BALL'].includes(delivery.extrasType ?? '') && delivery.legalBall) throw new Error('Wides and no-balls do not count as legal balls.')
   if (['WIDE', 'NO_BALL'].includes(delivery.extrasType ?? '') && delivery.extrasRuns < 1) throw new Error('Wides and no-balls must include at least one extra run.')
   if (typeof delivery.legalBall !== 'boolean' || typeof delivery.isWicket !== 'boolean') throw new Error('Delivery flags must be boolean values.')
+}
+
+export function advanceBattingEnds(
+  ends: BattingEnds,
+  delivery: DeliveryEvent,
+  legalBallsInOverBefore: number,
+  ballsPerOver: number,
+): BattingEnds {
+  validateDelivery(delivery)
+  if (!ends.strikerId || !ends.nonStrikerId || ends.strikerId === ends.nonStrikerId) throw new Error('The striker and non-striker must be different players.')
+  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  if (!Number.isInteger(legalBallsInOverBefore) || legalBallsInOverBefore < 0 || legalBallsInOverBefore >= ballsPerOver) throw new Error('Legal balls in the current over are out of range.')
+  if (delivery.strikerId !== ends.strikerId) throw new Error('The delivery striker must be at the striker end.')
+  if (delivery.isWicket) throw new Error('A replacement batter is required to advance after a wicket.')
+
+  const oddCompletedRuns = delivery.completedRuns % 2 === 1
+  const overCompleted = delivery.legalBall && legalBallsInOverBefore + 1 === ballsPerOver
+  return oddCompletedRuns !== overCompleted
+    ? { strikerId: ends.nonStrikerId, nonStrikerId: ends.strikerId }
+    : ends
+}
+
+export function getBattingEndsAfter(deliveries: readonly DeliveryEvent[], openingEnds: BattingEnds, ballsPerOver: number): BattingEnds {
+  let ends = openingEnds
+  let legalBallsInOver = 0
+  deliveries.forEach((delivery) => {
+    ends = advanceBattingEnds(ends, delivery, legalBallsInOver, ballsPerOver)
+    legalBallsInOver = delivery.legalBall ? (legalBallsInOver + 1) % ballsPerOver : legalBallsInOver
+  })
+  return ends
 }
 
 export function summarizeBattingScorecard(deliveries: readonly DeliveryEvent[], batterIds: readonly string[]): BatterSummary[] {

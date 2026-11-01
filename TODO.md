@@ -32,7 +32,7 @@
 - [ ] Select group-stage playoff qualifiers and generate the playoff bracket.
 - [x] Add tested innings accounting for runs, extras, wickets, legal balls, overs, and undoing the last delivery.
 - [x] Detect innings completion at the overs limit or when all but one batter are out.
-- [x] Add a local-only scoring preview with run, wide, no-ball, recent-ball, and undo controls.
+- [x] Add a local-only scoring preview with run, wide, no-ball, recent-ball, undo, and batter-strike rotation controls.
 - [ ] Build the organizer scoring console around a selected match and persist match/over state.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.

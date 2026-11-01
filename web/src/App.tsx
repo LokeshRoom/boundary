@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupStageGroup, type RoundRobinRound } from './fixtures'
-import { summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
+import { getBattingEndsAfter, summarizeBattingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
 import { getGroupStageFixtures, getRoundRobinFixtures, listOwnedTournaments, saveGroupStageFixtures, saveKnockoutFixtures, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
@@ -615,17 +615,22 @@ function App() {
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
   const visibleTournaments = organizerUid ? tournaments : initialTournaments
   const previewScore = summarizeInnings(previewDeliveries, 6)
+  const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
+  const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, 6)
+  const previewBatters = summarizeBattingScorecard(previewDeliveries, [previewOpeningEnds.strikerId, previewOpeningEnds.nonStrikerId])
+  const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
+  const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
 
   function recordPreviewDelivery(delivery: DeliveryEvent) {
     setPreviewDeliveries((current) => [...current, delivery])
   }
 
   function recordPreviewRuns(runsOffBat: number) {
-    recordPreviewDelivery({ strikerId: 'preview-batter', bowlerId: 'preview-bowler', runsOffBat, extrasRuns: 0, legalBall: true, isWicket: false })
+    recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: 'preview-bowler', completedRuns: runsOffBat < 4 ? runsOffBat : 0, runsOffBat, extrasRuns: 0, legalBall: true, isWicket: false })
   }
 
   function recordPreviewExtra(extrasType: 'WIDE' | 'NO_BALL') {
-    recordPreviewDelivery({ strikerId: 'preview-batter', bowlerId: 'preview-bowler', runsOffBat: 0, extrasType, extrasRuns: 1, legalBall: false, isWicket: false })
+    recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: 'preview-bowler', completedRuns: 0, runsOffBat: 0, extrasType, extrasRuns: 1, legalBall: false, isWicket: false })
   }
 
   async function signIn() {
@@ -754,7 +759,7 @@ function App() {
                 </div>
               </div>
               <div className="live-card-bottom">
-                <div className="current-batters"><span>INNINGS</span><strong>Cedar CC batting</strong></div>
+                <div className="current-batters"><span>BATTERS</span><strong>{previewEnds.strikerId === previewOpeningEnds.strikerId ? 'M. Patel' : 'J. Cole'}* <b>{previewStriker.runs}</b> <small>({previewStriker.ballsFaced})</small></strong><strong>{previewEnds.nonStrikerId === previewOpeningEnds.nonStrikerId ? 'J. Cole' : 'M. Patel'} <b>{previewNonStriker.runs}</b> <small>({previewNonStriker.ballsFaced})</small></strong></div>
                 <div className="run-rate"><span>LEGAL BALLS</span><strong>{previewScore.legalBalls}</strong></div>
               </div>
               <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
