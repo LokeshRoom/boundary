@@ -129,7 +129,7 @@ service cloud.firestore {
       match /privateRegistrations/{registrationId} {
         allow read: if ownsTournament(tournamentId);
         allow create: if ownsTournament(tournamentId)
-          && exists(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(registrationId))
+          && existsAfter(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(registrationId))
           && validPrivateRegistration(request.resource.data)
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;

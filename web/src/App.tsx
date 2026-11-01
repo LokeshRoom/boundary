@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
+import { createTeam, listTeams, type NewTeam, type Team } from './teams'
 import { listOwnedTournaments, saveTournament, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
@@ -130,6 +131,102 @@ function TournamentDialog({
   )
 }
 
+function TeamDialog({
+  dialogRef,
+  tournament,
+  canManage,
+  onTeamAdded,
+}: {
+  dialogRef: RefObject<HTMLDialogElement | null>
+  tournament: Tournament | null
+  canManage: boolean
+  onTeamAdded: (tournamentId: string, teamCount: number) => void
+}) {
+  const [teams, setTeams] = useState<Team[]>([])
+  const [teamsTournamentId, setTeamsTournamentId] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const loading = Boolean(tournament?.id && teamsTournamentId !== tournament.id)
+
+  useEffect(() => {
+    if (!tournament?.id) return
+
+    let active = true
+    const tournamentId = tournament.id
+    void listTeams(tournamentId).then((saved) => {
+      if (active) {
+        setTeams(saved)
+        setTeamsTournamentId(tournamentId)
+        setError('')
+      }
+    }).catch(() => {
+      if (active) {
+        setTeams([])
+        setTeamsTournamentId(tournamentId)
+        setError('Could not load teams. Check your Firestore rules and connection.')
+      }
+    })
+    return () => { active = false }
+  }, [tournament?.id])
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!tournament?.id || !canManage) return
+
+    const formElement = event.currentTarget
+    const tournamentId = tournament.id
+    const form = new FormData(formElement)
+    const team: NewTeam = {
+      name: String(form.get('teamName') ?? '').trim(),
+      shortName: String(form.get('shortName') ?? '').trim().toUpperCase(),
+      captainName: String(form.get('captainName') ?? '').trim(),
+      captainContact: String(form.get('captainContact') ?? '').trim(),
+    }
+    if (!team.name || !team.shortName || !team.captainName || team.captainContact.length < 5) return
+
+    setSubmitting(true)
+    setError('')
+    void createTeam(tournamentId, team).then((created) => {
+      const updatedTeams = [...teams, created]
+      setTeams(updatedTeams)
+      onTeamAdded(tournamentId, updatedTeams.length)
+      formElement.reset()
+    }).catch(() => {
+      setError('Could not save this team. Check your Firestore connection and rules.')
+    }).finally(() => setSubmitting(false))
+  }
+
+  return (
+    <dialog className="create-dialog" ref={dialogRef} aria-labelledby="teams-title">
+      <div className="dialog-form">
+        <div className="dialog-heading">
+          <div><span className="eyebrow">Tournament teams</span><h2 id="teams-title">{tournament?.name ?? 'Choose a tournament'}</h2></div>
+          <button className="icon-button" type="button" aria-label="Close" onClick={() => dialogRef.current?.close()}><Icon name="close" /></button>
+        </div>
+        {!tournament?.id || !canManage ? <p className="form-note">Save this tournament and sign in as its organizer to manage teams.</p> : <>
+          <div className="team-list" aria-live="polite">
+            {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span></div>) : <p className="form-note">No teams added yet.</p>}
+          </div>
+          <form className="team-create-form" onSubmit={submit}>
+            <label className="field-label" htmlFor="team-name">Team name</label>
+            <input id="team-name" name="teamName" required maxLength={60} placeholder="e.g. Cedar Cricket Club" />
+            <label className="field-label" htmlFor="team-short-name">Short name</label>
+            <input id="team-short-name" name="shortName" required maxLength={5} placeholder="e.g. CCC" />
+            <label className="field-label" htmlFor="captain-name">Captain name</label>
+            <input id="captain-name" name="captainName" required maxLength={80} />
+            <label className="field-label" htmlFor="captain-contact">Captain contact</label>
+            <input id="captain-contact" name="captainContact" required minLength={5} maxLength={120} />
+            <p className="form-note">Captain contact details are saved in a private organizer-only record.</p>
+            {error && <p className="team-error" role="status">{error}</p>}
+            <div className="dialog-actions"><button className="button button-primary" type="submit" disabled={submitting || loading}>{submitting ? 'Saving...' : 'Add team'} <Icon name="arrow" size={16} /></button></div>
+          </form>
+        </>}
+        {error && (!canManage || !tournament?.id) && <p className="team-error" role="status">{error}</p>}
+      </div>
+    </dialog>
+  )
+}
+
 function App() {
   const [tournaments, setTournaments] = useState(initialTournaments)
   const [organizer, setOrganizer] = useState<string | null>(null)
@@ -138,7 +235,9 @@ function App() {
   const [authReady, setAuthReady] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const teamDialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
     if (!isFirebaseConfigured) return
@@ -230,6 +329,15 @@ function App() {
       setAuthError('Could not save this tournament. Check your Firebase connection and Firestore rules.')
       return false
     }
+  }
+
+  function openTeams(tournament: Tournament) {
+    setSelectedTournament(tournament)
+    teamDialogRef.current?.showModal()
+  }
+
+  function updateTeamCount(tournamentId: string, teamCount: number) {
+    setTournaments((current) => current.map((tournament) => tournament.id === tournamentId ? { ...tournament, teams: teamCount } : tournament))
   }
 
   return (
@@ -329,7 +437,7 @@ function App() {
                   <div className="tournament-name"><strong>{tournament.name}</strong><span>{tournament.format} <i /> {tournament.teams ? `${tournament.teams} teams` : 'No teams yet'}</span></div>
                   <div className="tournament-detail"><small>{tournament.startDate || 'SEASON'}</small><span>{tournament.venue || (index === 0 ? 'Summer' : index === 1 ? 'Weekend' : 'Spring')}</span></div>
                   <div className="tournament-status"><StatusPill status={tournament.status} /><small>{tournament.note}</small></div>
-                  <button className="row-open" type="button" aria-label={`Open ${tournament.name}`} onClick={() => dialogRef.current?.showModal()}><Icon name="arrow" size={17} /></button>
+                  <button className="row-open" type="button" aria-label={`Manage teams for ${tournament.name}`} onClick={() => openTeams(tournament)}><Icon name="arrow" size={17} /></button>
                 </article>
               ))}
             </div>}
@@ -346,6 +454,7 @@ function App() {
         </div>
       </main>
       <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} canSave={Boolean(organizerUid)} />
+      <TeamDialog dialogRef={teamDialogRef} tournament={selectedTournament} canManage={Boolean(organizerUid && selectedTournament?.id)} onTeamAdded={updateTeamCount} />
     </div>
   )
 }

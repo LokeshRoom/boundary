@@ -132,6 +132,11 @@ h1, h2, p { margin-top: 0; }
 .dialog-form input:focus, .dialog-form select:focus { border-color: #588263; box-shadow: 0 0 0 3px #58826324; }
 .form-note { margin: 1px 0 7px; color: #748076; font-size: 10px; line-height: 1.5; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.team-list { max-height: 150px; overflow-y: auto; border-top: 1px solid #edf0eb; }
+.team-list-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid #edf0eb; font-size: 12px; }
+.team-list-row span { color: #748076; font-weight: 700; letter-spacing: .06em; }
+.team-create-form { display: grid; gap: 11px; }
+.team-error { margin: 0; color: #9d3d30; font-size: 11px; line-height: 1.45; }
 
 @media (max-width: 1000px) {
   .sidebar { width: 205px; }
