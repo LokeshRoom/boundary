@@ -23,4 +23,6 @@ The Firestore rules allow public reads, require an authenticated owner for write
 
 ## Public and private team data
 
-Public team records must not contain captain contact details. Keep captain contact data in a separate private registration document; `teams` and `privateRegistrations` are denied to all clients until their dedicated registration and approval rules are implemented. Firestore does not filter fields from a readable document, so storing contact data beside public team fields would expose it.
+`tournaments/{tournamentId}/teams/{teamId}` is public and contains only `name`, `shortName`, `status: APPROVED`, and timestamps. Player records live at `teams/{teamId}/players/{playerId}` and contain only name, jersey number, and role. Only the tournament owner can create or change approved teams and players.
+
+Captain names and contact details live in `tournaments/{tournamentId}/privateRegistrations/{teamId}`. Only the tournament owner can read or write these records, and the rule requires a corresponding public team. Pending public submissions are not enabled yet; they need a separate bounded submission path and approval flow. Firestore does not filter fields from a readable document, so contact details must never be stored beside public team or player data.

@@ -6,6 +6,11 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    function ownsTournament(tournamentId) {
+      return request.auth != null
+        && get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.organizerUid == request.auth.uid;
+    }
+
     function validTournament(data) {
       return data.keys().hasAll([
           'name', 'format', 'status', 'organizerUid', 'oversPerInnings',
@@ -48,6 +53,45 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function validTeam(data) {
+      return data.keys().hasAll(['name', 'shortName', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'shortName', 'status', 'createdAt', 'updatedAt'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.shortName is string
+        && data.shortName.size() > 0
+        && data.shortName.size() <= 5
+        && data.status == 'APPROVED'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validPlayer(data) {
+      return data.keys().hasAll(['name', 'jerseyNumber', 'role'])
+        && data.keys().hasOnly(['name', 'jerseyNumber', 'role'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.jerseyNumber is int
+        && data.jerseyNumber >= 0
+        && data.jerseyNumber <= 99
+        && data.role in ['BATTER', 'BOWLER', 'ALL_ROUNDER', 'WICKETKEEPER'];
+    }
+
+    function validPrivateRegistration(data) {
+      return data.keys().hasAll(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
+        && data.captainName is string
+        && data.captainName.size() > 0
+        && data.captainName.size() <= 80
+        && data.captainContact is string
+        && data.captainContact.size() >= 5
+        && data.captainContact.size() <= 120
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if request.auth != null
@@ -64,11 +108,36 @@ service cloud.firestore {
       allow delete: if signedInAs(resource.data.organizerUid);
 
       match /teams/{teamId} {
-        allow read, write: if false;
+        allow read: if true;
+        allow create: if ownsTournament(tournamentId)
+          && validTeam(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsTournament(tournamentId)
+          && validTeam(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(tournamentId);
+
+        match /players/{playerId} {
+          allow read: if true;
+          allow create, update: if ownsTournament(tournamentId) && validPlayer(request.resource.data);
+          allow delete: if ownsTournament(tournamentId);
+        }
       }
 
       match /privateRegistrations/{registrationId} {
-        allow read, write: if false;
+        allow read: if ownsTournament(tournamentId);
+        allow create: if ownsTournament(tournamentId)
+          && exists(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(registrationId))
+          && validPrivateRegistration(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsTournament(tournamentId)
+          && validPrivateRegistration(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(tournamentId);
       }
     }
   }
