@@ -12,6 +12,15 @@ const initialTournaments: Tournament[] = [
   { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', registrationOpen: false, note: 'Winner: Cedar CC', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Northside Oval', startDate: '2026-03-22' },
 ]
 
+const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
+const previewLineup = [
+  { id: 'preview-batter-a', name: 'M. Patel' },
+  { id: 'preview-batter-b', name: 'J. Cole' },
+  { id: 'preview-batter-c', name: 'S. Khan' },
+  { id: 'preview-batter-d', name: 'A. Reed' },
+]
+const previewBowlerIds = ['preview-bowler']
+
 const navItems = [
   { label: 'Overview', href: '#overview', icon: 'home' },
   { label: 'Tournaments', href: '#tournaments', icon: 'cup' },
@@ -757,6 +766,9 @@ function App() {
     void load.then(([batches, snapshot]) => {
       if (!active) return
       const deliveries = flattenOverBatches(batches, match.ballsPerOver)
+      getBattingEndsAfter(deliveries, previewOpeningEnds, previewLineup.length, match.ballsPerOver)
+      summarizeBattingScorecard(deliveries, previewLineup.map(({ id }) => id))
+      summarizeBowlingScorecard(deliveries, previewBowlerIds, match.ballsPerOver)
       if (snapshot && !sameInningsSummary(snapshot.scoreSummary, buildLiveMatchSnapshot(deliveries, match.ballsPerOver).scoreSummary)) {
         throw new Error('Saved score does not match its delivery history.')
       }
@@ -779,16 +791,9 @@ function App() {
   const previewScore = summarizeInnings(previewDeliveries, previewBallsPerOver)
   const previewTeamA = previewMatch?.fixture.teamA
   const previewTeamB = previewMatch?.fixture.teamB
-  const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
-  const previewLineup = [
-    { id: 'preview-batter-a', name: 'M. Patel' },
-    { id: 'preview-batter-b', name: 'J. Cole' },
-    { id: 'preview-batter-c', name: 'S. Khan' },
-    { id: 'preview-batter-d', name: 'A. Reed' },
-  ]
   const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, previewLineup.length, previewBallsPerOver)
   const previewBatters = summarizeBattingScorecard(previewDeliveries, previewLineup.map(({ id }) => id))
-  const previewBowlers = summarizeBowlingScorecard(previewDeliveries, ['preview-bowler'], previewBallsPerOver)
+  const previewBowlers = summarizeBowlingScorecard(previewDeliveries, previewBowlerIds, previewBallsPerOver)
   const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
   const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
   const previewDismissed = new Set(previewBatters.filter((batter) => batter.dismissed).map((batter) => batter.playerId))

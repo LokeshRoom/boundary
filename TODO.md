@@ -45,6 +45,7 @@
 - [x] Reject wicket replacements who are already at the crease.
 - [x] Reject returning a dismissed batter and repeated dismissals in scoring history.
 - [x] Validate wicket replacements against lineup size during innings replay.
+- [x] Validate loaded scoring history against its batter and bowler lineups before rendering.
 - [x] Validate opening batting ends and over settings before replaying an empty innings.
 - [x] Show batter runs alongside wide and no-ball markers in the public recent-ball feed.
 - [x] Show the total and category breakdown of extras on the public scoreboard.
