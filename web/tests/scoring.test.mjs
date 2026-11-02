@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, flattenOverBatches, formatDeliveryLabel, formatExtrasSummary, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, makeWicketDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
+import { advanceBattingEnds, buildInningsScorecard, buildLiveMatchSnapshot, calculateNetRunRate, flattenOverBatches, formatDeliveryLabel, formatExtrasSummary, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, makeWicketDelivery, parseLiveMatchSnapshot, parsePublicLiveMatchSummary, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery } from '../src/scoring.ts'
 
 const delivery = (overrides = {}) => ({ strikerId: 'batter-1', bowlerId: 'bowler-1', completedRuns: 0, runsOffBat: 0, extrasRuns: 0, legalBall: true, isWicket: false, ...overrides })
 
@@ -169,6 +169,29 @@ test('composes an innings total with batting and bowling figures', () => {
   assert.equal(scorecard.summary.runs, 5)
   assert.equal(scorecard.batting.reduce((total, batter) => total + batter.runs, 0), 5)
   assert.equal(scorecard.bowling[0].runsConceded, 5)
+})
+
+test('calculates net run rate from legal balls and full quota when all out', () => {
+  assert.equal(calculateNetRunRate(
+    { runs: 10, wickets: 0, legalBalls: 5, battingPlayers: 11, oversLimit: 5 },
+    { runs: 20, wickets: 0, legalBalls: 15, battingPlayers: 11, oversLimit: 5 },
+    6,
+  ), 4)
+  assert.equal(calculateNetRunRate(
+    { runs: 30, wickets: 3, legalBalls: 7, battingPlayers: 4, oversLimit: 5 },
+    { runs: 24, wickets: 0, legalBalls: 12, battingPlayers: 11, oversLimit: 5 },
+    6,
+  ), -6)
+  assert.throws(() => calculateNetRunRate(
+    { runs: 0, wickets: 0, legalBalls: 31, battingPlayers: 11, oversLimit: 5 },
+    { runs: 0, wickets: 0, legalBalls: 0, battingPlayers: 11, oversLimit: 5 },
+    6,
+  ), /invalid/)
+  assert.throws(() => calculateNetRunRate(
+    { runs: 0, wickets: 0, legalBalls: 0, battingPlayers: 11, oversLimit: 5 },
+    { runs: 0, wickets: 0, legalBalls: 0, battingPlayers: 11, oversLimit: 5 },
+    0,
+  ), /positive integer/)
 })
 
 test('builds a compact live snapshot with current totals and only the latest 18 deliveries', () => {

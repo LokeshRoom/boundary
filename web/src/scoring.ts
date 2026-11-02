@@ -59,6 +59,11 @@ export type InningsScorecard = {
   bowling: BowlerSummary[]
 }
 
+export type NetRunRateInnings = Pick<InningsSummary, 'runs' | 'wickets' | 'legalBalls'> & {
+  battingPlayers: number
+  oversLimit: number
+}
+
 export type LiveMatchSnapshot = {
   currentInnings: 1 | 2
   scoreSummary: InningsSummary
@@ -335,6 +340,19 @@ export function buildInningsScorecard(
     batting: summarizeBattingScorecard(deliveries, batterIds),
     bowling: summarizeBowlingScorecard(deliveries, bowlerIds, ballsPerOver),
   }
+}
+
+export function calculateNetRunRate(inningsFor: NetRunRateInnings, inningsAgainst: NetRunRateInnings, ballsPerOver: number): number {
+  if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  const runRate = (innings: NetRunRateInnings) => {
+    const { runs, wickets, legalBalls, battingPlayers, oversLimit } = innings
+    if (![runs, wickets, legalBalls].every((value) => Number.isInteger(value) && value >= 0) || !Number.isInteger(battingPlayers) || battingPlayers < 2 || !Number.isInteger(oversLimit) || oversLimit < 1 || wickets > battingPlayers - 1 || legalBalls > oversLimit * ballsPerOver) {
+      throw new Error('Net run rate innings data is invalid.')
+    }
+    const balls = wickets === battingPlayers - 1 ? oversLimit * ballsPerOver : legalBalls
+    return balls === 0 ? 0 : runs * ballsPerOver / balls
+  }
+  return runRate(inningsFor) - runRate(inningsAgainst)
 }
 
 export function buildLiveMatchSnapshot(

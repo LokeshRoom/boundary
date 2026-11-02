@@ -71,7 +71,8 @@
 - [x] Open a shareable public live-score page for a selected match.
 - [x] Add a validated single-document reader for public live match summaries.
 - [ ] Publish the live scoreboard and historical scorecard with quota-aware reads.
-- [ ] Calculate standings and net run rate; render brackets.
+- [x] Calculate one match's net run rate from innings runs, legal balls, overs limits, and all-out quota.
+- [ ] Aggregate completed match results into standings and render the standings and tournament brackets.
 - [ ] Verify Firebase Spark limits, production rules, and Firebase Hosting deployment.
 
 ## PRD implementation notes
