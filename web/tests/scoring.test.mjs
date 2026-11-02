@@ -150,11 +150,14 @@ test('groups historical deliveries by legal over without splitting wides or no-b
   assert.deepEqual(batches.map(({ overNumber, deliveries: over }) => [overNumber, over.length]), [[1, 5], [2, 2]])
   assert.deepEqual(groupDeliveriesByOver([], 6), [])
   assert.throws(() => groupDeliveriesByOver(deliveries, 0), /positive integer/)
+  assert.throws(() => groupDeliveriesByOver(deliveries, 6, 3), /Innings must be 1 or 2/)
+  assert.deepEqual(groupDeliveriesByOver([delivery()], 6, 2), [{ innings: 2, overNumber: 1, deliveries: [delivery()] }])
   assert.deepEqual(flattenOverBatches(batches, 3), deliveries)
   assert.deepEqual(flattenOverBatches([], 3), [])
   assert.throws(() => flattenOverBatches([{ overNumber: 2, deliveries: [delivery()] }], 3), /numbered consecutively/)
   assert.throws(() => flattenOverBatches([{ overNumber: 1, deliveries: [delivery()] }, { overNumber: 2, deliveries: [delivery()] }], 3), /full legal-ball limit/)
   assert.throws(() => flattenOverBatches([{ overNumber: 1, deliveries: Array.from({ length: 4 }, () => delivery()) }], 3), /cannot exceed/)
+  assert.throws(() => flattenOverBatches([{ innings: 1, overNumber: 1, deliveries: [delivery()] }, { innings: 2, overNumber: 2, deliveries: [delivery()] }], 3), /one valid innings/)
 })
 
 test('composes an innings total with batting and bowling figures', () => {

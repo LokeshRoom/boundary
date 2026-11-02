@@ -48,6 +48,7 @@ export type BowlerSummary = {
 }
 
 export type OverDeliveryBatch = {
+  innings: 1 | 2
   overNumber: number
   deliveries: DeliveryEvent[]
 }
@@ -391,8 +392,9 @@ export function undoLastDelivery(deliveries: readonly DeliveryEvent[]): Delivery
   return deliveries.slice(0, -1)
 }
 
-export function groupDeliveriesByOver(deliveries: readonly DeliveryEvent[], ballsPerOver: number): OverDeliveryBatch[] {
+export function groupDeliveriesByOver(deliveries: readonly DeliveryEvent[], ballsPerOver: number, innings: 1 | 2 = 1): OverDeliveryBatch[] {
   if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  if (innings !== 1 && innings !== 2) throw new Error('Innings must be 1 or 2.')
   let legalBalls = 0
   const overs: OverDeliveryBatch[] = []
 
@@ -400,7 +402,7 @@ export function groupDeliveriesByOver(deliveries: readonly DeliveryEvent[], ball
     validateDelivery(delivery)
     const overNumber = Math.floor(legalBalls / ballsPerOver) + 1
     const currentOver = overs.at(-1)
-    if (currentOver?.overNumber !== overNumber) overs.push({ overNumber, deliveries: [] })
+    if (currentOver?.overNumber !== overNumber) overs.push({ innings, overNumber, deliveries: [] })
     overs.at(-1)!.deliveries.push(delivery)
     legalBalls += Number(delivery.legalBall)
   })
@@ -410,6 +412,8 @@ export function groupDeliveriesByOver(deliveries: readonly DeliveryEvent[], ball
 
 export function flattenOverBatches(batches: readonly OverDeliveryBatch[], ballsPerOver: number): DeliveryEvent[] {
   if (!Number.isInteger(ballsPerOver) || ballsPerOver < 1) throw new Error('Balls per over must be a positive integer.')
+  const innings = batches[0]?.innings ?? 1
+  if ((innings !== 1 && innings !== 2) || batches.some((batch) => (batch.innings ?? 1) !== innings)) throw new Error('Over batches must belong to one valid innings.')
 
   return batches.flatMap((batch, index) => {
     if (batch.overNumber !== index + 1 || !Array.isArray(batch.deliveries) || batch.deliveries.length === 0) throw new Error('Over batches must be non-empty and numbered consecutively from 1.')

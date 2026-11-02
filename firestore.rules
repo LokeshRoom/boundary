@@ -210,8 +210,9 @@ service cloud.firestore {
     }
 
     function validOverBatch(data) {
-      return data.keys().hasAll(['overNumber', 'deliveries', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['innings', 'overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['innings', 'overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+        && data.innings in [1, 2]
         && data.overNumber is int
         && data.overNumber > 0
         && data.overNumber <= 100

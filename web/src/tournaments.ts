@@ -94,11 +94,13 @@ export async function getPublicTournamentScoreSettings(tournamentId: string): Pr
   return { name: data.name, ballsPerOver: data.ballsPerOver }
 }
 
-export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number) {
+export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number, innings: 1 | 2 = 1) {
   if (!Number.isInteger(overNumber) || overNumber < 1 || overNumber > 100) throw new Error('Over number must be between 1 and 100.')
-  if (deliveries) flattenOverBatches([{ overNumber: 1, deliveries }], ballsPerOver)
+  if (innings !== 1 && innings !== 2) throw new Error('Innings must be 1 or 2.')
+  if (deliveries) flattenOverBatches([{ innings, overNumber: 1, deliveries }], ballsPerOver)
   const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
-  const overRef = doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs', String(overNumber))
+  const overId = innings === 1 ? String(overNumber) : `${innings}_${overNumber}`
+  const overRef = doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs', overId)
 
   await runTransaction(firestore, async (transaction) => {
     const savedOver = await transaction.get(overRef)
@@ -107,17 +109,23 @@ export async function saveOverDeliveryBatch(tournamentId: string, fixture: Playa
       return
     }
 
-    const updated = { overNumber, deliveries, updatedAt: serverTimestamp() }
+    const updated = { innings, overNumber, deliveries, updatedAt: serverTimestamp() }
     if (savedOver.exists()) transaction.update(overRef, updated)
     else transaction.set(overRef, { ...updated, createdAt: serverTimestamp() })
   })
 }
 
-export async function getOverDeliveryBatches(tournamentId: string, fixture: PlayableFixture, ballsPerOver: number): Promise<OverDeliveryBatch[]> {
+export async function getOverDeliveryBatches(tournamentId: string, fixture: PlayableFixture, ballsPerOver: number, innings: 1 | 2 = 1): Promise<OverDeliveryBatch[]> {
+  if (innings !== 1 && innings !== 2) throw new Error('Innings must be 1 or 2.')
   const { firestore, collection, getDocs } = await getFirebaseFirestore()
   const oversRef = collection(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs')
   const savedOvers = await getDocs(oversRef)
-  const batches = savedOvers.docs.map((saved) => saved.data() as OverDeliveryBatch).sort((left, right) => left.overNumber - right.overNumber)
+  const allBatches = savedOvers.docs.map((saved) => {
+    const data = saved.data()
+    return { ...data, innings: data.innings ?? 1 } as OverDeliveryBatch
+  })
+  if (allBatches.some((batch) => batch.innings !== 1 && batch.innings !== 2)) throw new Error('Saved over batches have an invalid innings number.')
+  const batches = allBatches.filter((batch) => batch.innings === innings).sort((left, right) => left.overNumber - right.overNumber)
   flattenOverBatches(batches, ballsPerOver)
   return batches
 }

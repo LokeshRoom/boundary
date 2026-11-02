@@ -52,6 +52,7 @@
 - [x] Add a local-only scoring preview with run, wide, no-ball, wicket and replacement batter, recent-ball, undo, and batter-strike rotation controls.
 - [x] Connect selected-match scoring preview to restore and persist summary and over batches for organizers.
 - [ ] Complete the scoring console with real roster selection and both innings.
+- [x] Scope persisted over batches by innings so first- and second-innings overs do not overwrite each other.
 - [x] Calculate batter runs, balls, boundaries, strike rate, and dismissal from delivery history.
 - [x] Include the dismissal type in batting scorecard figures and display it in the innings scorecard.
 - [x] Calculate bowler runs conceded, legal balls, wickets, overs, and economy from delivery history.
