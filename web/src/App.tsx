@@ -6,15 +6,6 @@ import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistration
 import { getGroupPlayoffFixtures, getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupPlayoffFixtures, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
-const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
-const previewLineup = [
-  { id: 'preview-batter-a', name: 'M. Patel' },
-  { id: 'preview-batter-b', name: 'J. Cole' },
-  { id: 'preview-batter-c', name: 'S. Khan' },
-  { id: 'preview-batter-d', name: 'A. Reed' },
-]
-const previewBowlerIds = ['preview-bowler']
-
 const navItems = [
   { label: 'Overview', href: '#overview', icon: 'home' },
   { label: 'Tournaments', href: '#tournaments', icon: 'cup' },
@@ -635,7 +626,7 @@ function TeamDialog({
                 if (!tournament) return
                 onSelectFixture(fixture, tournament)
                 dialogRef.current?.close()
-              }}>Score preview</button>
+              }}>Start scoring</button>
             </div>)}</div>
           </section>}
           {showLeagueSchedule && loadingLeagueSchedule && <p className="form-note" role="status">Checking for a saved schedule...</p>}
@@ -684,6 +675,9 @@ function App() {
   const [previewWideOutcome, setPreviewWideOutcome] = useState('1:0')
   const [previewDismissalType, setPreviewDismissalType] = useState<DismissalType>('BOWLED')
   const [previewMatch, setPreviewMatch] = useState<{ tournamentId?: string; tournamentName: string; oversLimit: number; ballsPerOver: number; fixture: PlayableFixture } | null>(null)
+  const [matchSquad, setMatchSquad] = useState<{ batting: Player[]; bowling: Player[] } | null>(null)
+  const [squadState, setSquadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [currentBowlerId, setCurrentBowlerId] = useState('')
   const [loadedMatchKey, setLoadedMatchKey] = useState<string | null>(null)
   const [scoreSaveStatus, setScoreSaveStatus] = useState('')
   const [organizer, setOrganizer] = useState<string | null>(null)
@@ -750,7 +744,30 @@ function App() {
 
   useEffect(() => {
     const match = previewMatch
-    if (!previewMatchKey || !match?.tournamentId || !organizerUid) return
+    if (!match?.tournamentId) return
+
+    let active = true
+    void Promise.all([
+      listPlayers(match.tournamentId, match.fixture.teamA.id),
+      listPlayers(match.tournamentId, match.fixture.teamB.id),
+    ]).then(([batting, bowling]) => {
+      if (!active) return
+      setMatchSquad({ batting, bowling })
+      setCurrentBowlerId(bowling[0]?.id ?? '')
+      setSquadState('ready')
+    }).catch(() => {
+      if (active) {
+        setMatchSquad(null)
+        setSquadState('error')
+      }
+    })
+
+    return () => { active = false }
+  }, [previewMatch])
+
+  useEffect(() => {
+    const match = previewMatch
+    if (!previewMatchKey || !match?.tournamentId || !organizerUid || squadState !== 'ready' || !matchSquad || matchSquad.batting.length < 2 || matchSquad.bowling.length < 1) return
 
     let active = true
     const load = scoreSaveQueueRef.current.then(() => Promise.all([
@@ -760,9 +777,9 @@ function App() {
     void load.then(([batches, snapshot]) => {
       if (!active) return
       const deliveries = flattenOverBatches(batches, match.ballsPerOver)
-      getBattingEndsAfter(deliveries, previewOpeningEnds, previewLineup.length, match.ballsPerOver)
-      summarizeBattingScorecard(deliveries, previewLineup.map(({ id }) => id))
-      summarizeBowlingScorecard(deliveries, previewBowlerIds, match.ballsPerOver)
+      getBattingEndsAfter(deliveries, { strikerId: matchSquad.batting[0].id, nonStrikerId: matchSquad.batting[1].id }, matchSquad.batting.length, match.ballsPerOver)
+      summarizeBattingScorecard(deliveries, matchSquad.batting.map(({ id }) => id))
+      summarizeBowlingScorecard(deliveries, matchSquad.bowling.map(({ id }) => id), match.ballsPerOver)
       if (snapshot && !sameInningsSummary(snapshot.scoreSummary, buildLiveMatchSnapshot(deliveries, match.ballsPerOver).scoreSummary)) {
         throw new Error('Saved score does not match its delivery history.')
       }
@@ -776,23 +793,25 @@ function App() {
     })
 
     return () => { active = false }
-  }, [organizerUid, previewMatch, previewMatchKey])
+  }, [organizerUid, previewMatch, previewMatchKey, squadState, matchSquad])
 
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
+  const battingLineup = matchSquad?.batting ?? []
+  const bowlingRoster = matchSquad?.bowling ?? []
+  const canScore = squadState === 'ready' && battingLineup.length >= 2 && bowlingRoster.length >= 1
   const previewBallsPerOver = previewMatch?.ballsPerOver ?? 6
   const previewOversLimit = previewMatch?.oversLimit ?? 20
   const previewScore = summarizeInnings(previewDeliveries, previewBallsPerOver)
-  const previewTeamA = previewMatch?.fixture.teamA
-  const previewTeamB = previewMatch?.fixture.teamB
-  const previewEnds = getBattingEndsAfter(previewDeliveries, previewOpeningEnds, previewLineup.length, previewBallsPerOver)
-  const previewBatters = summarizeBattingScorecard(previewDeliveries, previewLineup.map(({ id }) => id))
-  const previewBowlers = summarizeBowlingScorecard(previewDeliveries, previewBowlerIds, previewBallsPerOver)
-  const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId)!
-  const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId)!
+  const openingEnds = { strikerId: battingLineup[0]?.id ?? '', nonStrikerId: battingLineup[1]?.id ?? '' }
+  const previewEnds = canScore ? getBattingEndsAfter(previewDeliveries, openingEnds, battingLineup.length, previewBallsPerOver) : { strikerId: '', nonStrikerId: '' }
+  const previewBatters = canScore ? summarizeBattingScorecard(previewDeliveries, battingLineup.map(({ id }) => id)) : []
+  const previewBowlers = canScore ? summarizeBowlingScorecard(previewDeliveries, bowlingRoster.map(({ id }) => id), previewBallsPerOver) : []
+  const previewStriker = previewBatters.find((batter) => batter.playerId === previewEnds.strikerId) ?? { runs: 0, ballsFaced: 0 }
+  const previewNonStriker = previewBatters.find((batter) => batter.playerId === previewEnds.nonStrikerId) ?? { runs: 0, ballsFaced: 0 }
   const previewDismissed = new Set(previewBatters.filter((batter) => batter.dismissed).map((batter) => batter.playerId))
-  const previewIncoming = previewLineup.find(({ id }) => id !== previewEnds.strikerId && id !== previewEnds.nonStrikerId && !previewDismissed.has(id))
-  const previewInningsOver = isInningsComplete(previewDeliveries, previewOversLimit, previewLineup.length, previewBallsPerOver)
-  const previewCanRecordWicket = !previewInningsOver && (Boolean(previewIncoming) || previewScore.wickets === previewLineup.length - 2)
+  const previewIncoming = battingLineup.find(({ id }) => id !== previewEnds.strikerId && id !== previewEnds.nonStrikerId && !previewDismissed.has(id))
+  const previewInningsOver = canScore ? isInningsComplete(previewDeliveries, previewOversLimit, battingLineup.length, previewBallsPerOver) : false
+  const previewCanRecordWicket = !previewInningsOver && (Boolean(previewIncoming) || previewScore.wickets === battingLineup.length - 2)
   const previewMatchLoading = Boolean(organizerUid && previewMatchKey && loadedMatchKey !== previewMatchKey)
 
   useEffect(() => {
@@ -838,21 +857,21 @@ function App() {
   }
 
   function recordPreviewRuns(runsOffBat: number) {
-    recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: 'preview-bowler', completedRuns: runsOffBat < 4 ? runsOffBat : 0, runsOffBat, extrasRuns: 0, legalBall: true, isWicket: false })
+    recordPreviewDelivery({ strikerId: previewEnds.strikerId, bowlerId: currentBowlerId, completedRuns: runsOffBat < 4 ? runsOffBat : 0, runsOffBat, extrasRuns: 0, legalBall: true, isWicket: false })
   }
 
   function recordPreviewWide() {
     const [extrasRuns, completedRuns] = previewWideOutcome.split(':').map(Number)
-    recordPreviewDelivery(makeWideDelivery(previewEnds.strikerId, 'preview-bowler', extrasRuns, completedRuns))
+    recordPreviewDelivery(makeWideDelivery(previewEnds.strikerId, currentBowlerId, extrasRuns, completedRuns))
   }
 
   function recordPreviewNoBall() {
-    recordPreviewDelivery(makeNoBallDelivery(previewEnds.strikerId, 'preview-bowler', previewNoBallRuns))
+    recordPreviewDelivery(makeNoBallDelivery(previewEnds.strikerId, currentBowlerId, previewNoBallRuns))
   }
 
   function recordPreviewWicket() {
     if (!previewCanRecordWicket) return
-    recordPreviewDelivery(makeWicketDelivery(previewEnds.strikerId, 'preview-bowler', previewDismissalType, previewIncoming?.id))
+    recordPreviewDelivery(makeWicketDelivery(previewEnds.strikerId, currentBowlerId, previewDismissalType, previewIncoming?.id))
   }
 
   async function signIn() {
@@ -963,24 +982,40 @@ function App() {
 
           <section className="overview-grid" aria-label="Season overview">
             <article className="live-card" id="live-score">
-              <div className="live-card-top">
-                <span className="live-label"><span className="pulse-dot" /> SCORING PREVIEW</span>
-                <span className="match-series">{previewMatch ? `${previewMatch.tournamentName} · ${previewMatch.fixture.groupName ? `${previewMatch.fixture.groupName} · ` : ''}${previewMatch.fixture.roundName}` : 'Sunday Turf League · Sample match'}</span>
-              </div>
+              {previewMatch && <div className="live-card-top">
+                <span className="live-label"><span className="pulse-dot" /> LIVE SCORE</span>
+                <span className="match-series">{`${previewMatch.tournamentName} · ${previewMatch.fixture.groupName ? `${previewMatch.fixture.groupName} · ` : ''}${previewMatch.fixture.roundName}`}</span>
+              </div>}
+              {!previewMatch ? (
+                <div className="live-empty">
+                  <Icon name="score" size={26} />
+                  <strong>No match selected</strong>
+                  <p>Pick a fixture from a tournament's teams to start scoring.</p>
+                </div>
+              ) : squadState === 'loading' ? (
+                <div className="live-empty"><span className="pulse-dot" /><strong>Loading players...</strong></div>
+              ) : squadState === 'error' ? (
+                <div className="live-empty"><strong>Could not load players for this match.</strong><p>Check your Firestore rules and connection, then pick the fixture again.</p></div>
+              ) : !canScore ? (
+                <div className="live-empty">
+                  <strong>{previewMatch.fixture.teamA.name} vs {previewMatch.fixture.teamB.name}</strong>
+                  <p>Add at least two batters to {previewMatch.fixture.teamA.name} and one player to {previewMatch.fixture.teamB.name} before scoring.</p>
+                </div>
+              ) : (<>
               <div className="live-scoreline">
                 <div className="team-block">
-                  <span className="team-crest crest-cedar">{previewTeamA ? previewTeamA.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase() : 'CC'}</span>
-                  <div><strong>{previewTeamA?.name ?? 'Cedar CC'}</strong><small>Batting</small></div>
+                  <span className="team-crest crest-cedar">{previewMatch.fixture.teamA.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase()}</span>
+                  <div><strong>{previewMatch.fixture.teamA.name}</strong><small>Batting</small></div>
                 </div>
                 <div className="score-block"><strong>{previewScore.runs}<span>/{previewScore.wickets}</span></strong><small>{previewScore.overs} overs · {previewScore.runRate.toFixed(2)} RPO</small></div>
                 <span className="versus">V</span>
                 <div className="team-block team-away">
-                  <span className="team-crest crest-ridge">{previewTeamB ? previewTeamB.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase() : 'RC'}</span>
-                  <div><strong>{previewTeamB?.name ?? 'Ridge Club'}</strong><small>Opponent</small></div>
+                  <span className="team-crest crest-ridge">{previewMatch.fixture.teamB.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase()}</span>
+                  <div><strong>{previewMatch.fixture.teamB.name}</strong><small>Opponent</small></div>
                 </div>
               </div>
               <div className="live-card-bottom">
-                {previewInningsOver ? <div className="current-batters"><span>INNINGS</span><strong>ALL OUT · {previewScore.runs}/{previewScore.wickets}</strong></div> : <div className="current-batters"><span>BATTERS</span><strong>{previewLineup.find(({ id }) => id === previewEnds.strikerId)?.name}* <b>{previewStriker.runs}</b> <small>({previewStriker.ballsFaced})</small></strong><strong>{previewLineup.find(({ id }) => id === previewEnds.nonStrikerId)?.name} <b>{previewNonStriker.runs}</b> <small>({previewNonStriker.ballsFaced})</small></strong></div>}
+                {previewInningsOver ? <div className="current-batters"><span>INNINGS</span><strong>ALL OUT · {previewScore.runs}/{previewScore.wickets}</strong></div> : <div className="current-batters"><span>BATTERS</span><strong>{battingLineup.find(({ id }) => id === previewEnds.strikerId)?.name}* <b>{previewStriker.runs}</b> <small>({previewStriker.ballsFaced})</small></strong><strong>{battingLineup.find(({ id }) => id === previewEnds.nonStrikerId)?.name} <b>{previewNonStriker.runs}</b> <small>({previewNonStriker.ballsFaced})</small></strong></div>}
                 <div className="run-rate"><span>LEGAL BALLS</span><strong>{previewScore.legalBalls}</strong></div>
               </div>
               <div className="ball-strip" aria-label={`Recent deliveries: ${previewDeliveries.slice(-8).map((delivery) => delivery.isWicket ? 'wicket' : delivery.extrasType === 'WIDE' ? 'wide' : delivery.extrasType === 'NO_BALL' ? 'no-ball' : delivery.runsOffBat || 'dot').join(', ')}`}>
@@ -993,25 +1028,26 @@ function App() {
                   <table>
                     <caption>Batting</caption>
                     <thead><tr><th scope="col">Batter</th><th scope="col">Dismissal</th><th scope="col">R</th><th scope="col">B</th><th scope="col">4s</th><th scope="col">6s</th><th scope="col">SR</th></tr></thead>
-                    <tbody>{previewBatters.map((batter) => <tr key={batter.playerId}><th scope="row">{previewLineup.find(({ id }) => id === batter.playerId)?.name}{batter.dismissed ? '' : previewEnds.strikerId === batter.playerId ? '*' : ''}</th><td>{batter.dismissalType?.replaceAll('_', ' ') ?? 'not out'}</td><td>{batter.runs}</td><td>{batter.ballsFaced}</td><td>{batter.fours}</td><td>{batter.sixes}</td><td>{batter.strikeRate.toFixed(1)}</td></tr>)}</tbody>
+                    <tbody>{previewBatters.map((batter) => <tr key={batter.playerId}><th scope="row">{battingLineup.find(({ id }) => id === batter.playerId)?.name}{batter.dismissed ? '' : previewEnds.strikerId === batter.playerId ? '*' : ''}</th><td>{batter.dismissalType?.replaceAll('_', ' ') ?? 'not out'}</td><td>{batter.runs}</td><td>{batter.ballsFaced}</td><td>{batter.fours}</td><td>{batter.sixes}</td><td>{batter.strikeRate.toFixed(1)}</td></tr>)}</tbody>
                   </table>
                   <table>
                     <caption>Bowling</caption>
                     <thead><tr><th scope="col">Bowler</th><th scope="col">O</th><th scope="col">R</th><th scope="col">W</th><th scope="col">Econ</th></tr></thead>
-                    <tbody>{previewBowlers.map((bowler) => <tr key={bowler.playerId}><th scope="row">L. Morris</th><td>{bowler.overs}</td><td>{bowler.runsConceded}</td><td>{bowler.wickets}</td><td>{bowler.economy.toFixed(1)}</td></tr>)}</tbody>
+                    <tbody>{previewBowlers.map((bowler) => <tr key={bowler.playerId}><th scope="row">{bowlingRoster.find(({ id }) => id === bowler.playerId)?.name ?? 'Unknown'}</th><td>{bowler.overs}</td><td>{bowler.runsConceded}</td><td>{bowler.wickets}</td><td>{bowler.economy.toFixed(1)}</td></tr>)}</tbody>
                   </table>
                 </div>
               </details>
-              <div className="scoring-preview" aria-label="Sample scoring controls">
+              <div className="scoring-preview" aria-label="Scoring controls">
                 <span>ADD DELIVERY</span>
-                <div className="scoring-keypad">{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver || previewMatchLoading} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
+                <div className="scoring-keypad"><label className="score-no-ball score-bowler"><span>Bowling</span><select aria-label="Current bowler" value={currentBowlerId} onChange={(event) => setCurrentBowlerId(event.target.value)} disabled={previewInningsOver || previewMatchLoading}>{bowlingRoster.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select></label>{[0, 1, 2, 3, 4, 6].map((runs) => <button className="score-key" key={runs} type="button" disabled={previewInningsOver || previewMatchLoading} aria-label={`Record ${runs} runs`} onClick={() => recordPreviewRuns(runs)}>{runs}</button>)}
                   <label className="score-no-ball score-wide"><span>Wide result</span><select aria-label="Wide result" value={previewWideOutcome} onChange={(event) => setPreviewWideOutcome(event.target.value)} disabled={previewInningsOver || previewMatchLoading}><option value="1:0">1 wide</option><option value="2:1">2 wides</option><option value="3:2">3 wides</option><option value="4:3">4 wides</option><option value="5:0">5 wide boundary</option><option value="5:4">5 wides</option><option value="6:5">6 wides</option></select><button className="score-key score-key-extra" type="button" disabled={previewInningsOver || previewMatchLoading} onClick={recordPreviewWide}>WD</button></label>
                   <label className="score-no-ball"><span>NB runs</span><select aria-label="Batter runs on no-ball" value={previewNoBallRuns} onChange={(event) => setPreviewNoBallRuns(Number(event.target.value))} disabled={previewInningsOver || previewMatchLoading}><option value={0}>0</option><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option><option value={6}>6</option></select><button className="score-key score-key-extra" type="button" disabled={previewInningsOver || previewMatchLoading} onClick={recordPreviewNoBall}>NB</button></label>
                   <label className="score-dismissal"><span>Dismissal</span><select aria-label="Dismissal type" value={previewDismissalType} onChange={(event) => setPreviewDismissalType(event.target.value as DismissalType)} disabled={previewInningsOver || previewMatchLoading}><option value="BOWLED">Bowled</option><option value="CAUGHT">Caught</option><option value="LBW">LBW</option><option value="RUN_OUT">Run out</option><option value="STUMPED">Stumped</option><option value="HIT_WICKET">Hit wicket</option><option value="RETIRED_OUT">Retired out</option></select><button className="score-key score-key-extra" type="button" disabled={!previewCanRecordWicket || previewMatchLoading} onClick={recordPreviewWicket}>Wicket</button></label>
                   <button className="score-key score-key-undo" type="button" disabled={!previewDeliveries.length || previewMatchLoading} onClick={undoPreviewDelivery}>Undo last</button>
                 </div>
-                <small role={scoreSaveStatus || previewMatchLoading ? 'status' : undefined}>{scoreSaveStatus || (previewMatchLoading ? 'Loading saved score...' : previewInningsOver ? 'Sample innings complete' : previewMatchKey && organizerUid ? 'Score syncs to Firebase as you enter deliveries.' : 'Preview only · score resets when the page reloads.')}</small>
+                <small role={scoreSaveStatus || previewMatchLoading ? 'status' : undefined}>{scoreSaveStatus || (previewMatchLoading ? 'Loading saved score...' : previewInningsOver ? 'Innings complete' : previewMatchKey && organizerUid ? 'Score syncs to Firebase as you enter deliveries.' : 'Not signed in · scores stay on this screen until you refresh.')}</small>
               </div>
+              </>)}
             </article>
 
             <aside className="season-note">
@@ -1059,6 +1095,8 @@ function App() {
         setLoadedMatchKey(null)
         setScoreSaveStatus(tournamentId && organizerUid ? 'Loading saved score...' : '')
         currentPreviewScoreRef.current = { key: matchKey, deliveries: JSON.stringify([]) }
+        setMatchSquad(null)
+        setSquadState('loading')
         setPreviewMatch({ tournamentId, tournamentName: tournament.name, oversLimit: tournament.overs, ballsPerOver: tournament.ballsPerOver, fixture })
         setPreviewDeliveries([])
       }} />
