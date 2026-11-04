@@ -82,5 +82,5 @@
 - Public viewers need public tournament and score data, but must never receive captain contact details.
 - Validate organizer ownership for every write, including document creation; public registration only creates bounded pending submissions while registration is open.
 - Keep a compact live match document and store delivery history by over to reduce Firestore operations.
-- The current React shell uses session-only sample data; it is not authenticated or persistent yet.
+- The React shell runs on real Firebase-backed data when configured; without credentials it runs in local mode with session-only state and no cloud sync.
 - Mark an item complete only after its implementation and validation are done.

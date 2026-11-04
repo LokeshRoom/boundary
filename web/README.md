@@ -2,7 +2,7 @@
 
 ## Firebase web configuration
 
-Copy `.env.example` to `.env.local` and fill in the web app settings from your Firebase project. The dashboard stays in preview mode until the required values are present. These Firebase web settings are public client configuration; protect data with Firestore Security Rules, not by hiding the API key.
+Copy `.env.example` to `.env.local` and fill in the web app settings from your Firebase project. Until the required values are present, the app runs in local mode and data stays on this device. These Firebase web settings are public client configuration; protect data with Firestore Security Rules, not by hiding the API key.
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
