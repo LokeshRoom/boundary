@@ -80,7 +80,7 @@ function TournamentDialog({
     endDateInput.setCustomValidity('')
 
     setSubmitting(true)
-    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', registrationOpen: true, note: 'Preview only', overs, ballsPerOver, powerplayOvers, startDate, endDate: endDate || undefined, venue })
+    void onCreate({ name, format: form.get('format') as Format, teams: 0, status: 'Registration open', registrationOpen: true, note: 'Not saved', overs, ballsPerOver, powerplayOvers, startDate, endDate: endDate || undefined, venue })
       .then((saved) => {
         if (!saved) return
         formElement.reset()
@@ -127,10 +127,10 @@ function TournamentDialog({
         <input id="tournament-balls-per-over" name="ballsPerOver" type="number" min="1" max="12" defaultValue="6" required />
         <label className="field-label" htmlFor="tournament-powerplay-overs">Powerplay overs</label>
         <input id="tournament-powerplay-overs" name="powerplayOvers" type="number" min="0" max={overs} value={powerplayOvers} onChange={(event) => setPowerplayOvers(Number(event.currentTarget.value))} required />
-        <p className="form-note">{canSave ? 'This tournament will be saved to your Firebase account.' : 'Preview only. Sign in with Firebase configured to save tournaments.'}</p>
+        <p className="form-note">{canSave ? 'This tournament will be saved to your Firebase account.' : 'Not signed in · this tournament stays on this screen until you refresh.'}</p>
         <div className="dialog-actions">
           <button className="button button-quiet" type="button" onClick={() => dialogRef.current?.close()}>Cancel</button>
-          <button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Saving...' : canSave ? 'Create tournament' : 'Add to preview'} <Icon name="arrow" size={16} /></button>
+          <button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Saving...' : 'Create tournament'} <Icon name="arrow" size={16} /></button>
         </div>
       </form>
     </dialog>
@@ -951,7 +951,7 @@ function App() {
         <div className="sidebar-spacer" />
         <div className="connection-card">
           <span className="connection-dot" />
-          <div><strong>{organizer ? 'Organizer account' : isFirebaseConfigured ? 'Firebase configured' : 'Preview workspace'}</strong><small>{organizer ? 'Signed in' : isFirebaseConfigured ? 'Sign in to save tournaments' : 'Add Firebase settings to connect'}</small></div>
+          <div><strong>{organizer ? 'Organizer account' : isFirebaseConfigured ? 'Firebase configured' : 'Local mode'}</strong><small>{organizer ? 'Signed in' : isFirebaseConfigured ? 'Sign in to save tournaments' : 'Add Firebase settings to connect'}</small></div>
         </div>
         <div className="sidebar-foot">A clearer view of match day.</div>
       </aside>
@@ -1085,7 +1085,7 @@ function App() {
             <button className="button button-outline" type="button" onClick={() => dialogRef.current?.showModal()}>Start with a tournament <Icon name="arrow" size={16} /></button>
           </section>
 
-          <footer className="page-footer"><span>BOUNDARY · CRICKET TOURNAMENTS</span><span>V1 PREVIEW · NO SIGN-IN OR CLOUD SYNC</span></footer>
+          <footer className="page-footer"><span>BOUNDARY · CRICKET TOURNAMENTS</span></footer>
         </div>
       </main>
       <TournamentDialog dialogRef={dialogRef} onCreate={addTournament} canSave={Boolean(organizerUid)} />
