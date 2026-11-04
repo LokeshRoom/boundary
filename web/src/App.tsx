@@ -545,18 +545,18 @@ function TeamDialog({
           <div className="team-list" aria-live="polite">
             {loading ? <p className="form-note">Loading teams...</p> : teams.length ? teams.map((team) => <div className="team-list-row" key={team.id}><strong>{team.name}</strong><span>{team.shortName}</span><button className="roster-action" type="button" disabled={playersLoading} onClick={() => openRoster(team)}>Manage roster</button></div>) : <p className="form-note">No teams added yet.</p>}
           </div>
-          {tournament?.format === 'Knockout' && <button className="text-action bracket-toggle" type="button" disabled={loading || loadingBracket || teams.length < 2} onClick={toggleBracket}>{showBracket ? 'Hide bracket preview' : 'Preview knockout bracket'}</button>}
-          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || loadingLeagueSchedule || teams.length < 2 || teams.length > ROUND_ROBIN_TEAM_LIMIT} onClick={toggleLeagueSchedule}>{showLeagueSchedule ? 'Hide schedule preview' : 'Preview round-robin schedule'}</button>}
+          {tournament?.format === 'Knockout' && <button className="text-action bracket-toggle" type="button" disabled={loading || loadingBracket || teams.length < 2} onClick={toggleBracket}>{showBracket ? 'Hide knockout bracket' : 'Show knockout bracket'}</button>}
+          {tournament?.format === 'League' && <button className="text-action bracket-toggle" type="button" disabled={loading || loadingLeagueSchedule || teams.length < 2 || teams.length > ROUND_ROBIN_TEAM_LIMIT} onClick={toggleLeagueSchedule}>{showLeagueSchedule ? 'Hide round-robin schedule' : 'Show round-robin schedule'}</button>}
           {tournament?.format === 'League' && teams.length > ROUND_ROBIN_TEAM_LIMIT && <p className="form-note">Round-robin schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p>}
           {tournament?.format === 'Groups + playoffs' && <>
             <label className="field-label" htmlFor="group-count">Number of groups</label>
             <select id="group-count" value={hasSavedGroupStage ? savedGroups?.length ?? selectedGroupCount : selectedGroupCount} disabled={hasSavedGroupStage} onChange={(event) => setGroupCount(Number(event.currentTarget.value))}>
               {Array.from({ length: Math.max(0, maximumGroupCount - 1) }, (_, index) => index + 2).map((count) => <option key={count} value={count}>{count} groups</option>)}
             </select>
-            {teams.length < 4 ? <p className="form-note">Add at least four teams to preview group-stage fixtures.</p> : teams.length > ROUND_ROBIN_TEAM_LIMIT ? <p className="form-note">Group-stage schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p> : <button className="text-action bracket-toggle" type="button" disabled={loading || loadingGroupStage} onClick={toggleGroupStage}>{showGroupStage ? 'Hide group-stage preview' : 'Preview group-stage fixtures'}</button>}
+            {teams.length < 4 ? <p className="form-note">Add at least four teams to show group-stage fixtures.</p> : teams.length > ROUND_ROBIN_TEAM_LIMIT ? <p className="form-note">Group-stage schedules support up to {ROUND_ROBIN_TEAM_LIMIT} teams.</p> : <button className="text-action bracket-toggle" type="button" disabled={loading || loadingGroupStage} onClick={toggleGroupStage}>{showGroupStage ? 'Hide group-stage fixtures' : 'Show group-stage fixtures'}</button>}
           </>}
-          {knockoutRounds.length > 0 && <section aria-label="Knockout bracket preview">
-            <p className="form-note">{hasSavedBracket ? 'Saved bracket. Byes go to teams in the listed order.' : 'Preview only. Byes go to teams in the listed order.'}</p>
+          {knockoutRounds.length > 0 && <section aria-label="Knockout bracket">
+            <p className="form-note">{hasSavedBracket ? 'Saved bracket. Byes go to teams in the listed order.' : 'Not saved yet. Byes go to teams in the listed order.'}</p>
             <div className="bracket-preview">
             {knockoutRounds.map((round) => <div className="bracket-round" key={round.name}>
               <h3>{round.name}</h3>
@@ -571,8 +571,8 @@ function TeamDialog({
             </div>}
             {bracketMessageTournamentId === tournament.id && bracketMessage && <p className="form-note" role="status">{bracketMessage}</p>}
           </section>}
-          {leagueRounds.length > 0 && <section className="league-schedule" aria-label="Round-robin schedule preview">
-            <p className="form-note">{hasSavedLeagueSchedule ? 'Saved schedule · each team plays every other team once.' : 'Preview only · each team plays every other team once.'}</p>
+          {leagueRounds.length > 0 && <section className="league-schedule" aria-label="Round-robin schedule">
+            <p className="form-note">{hasSavedLeagueSchedule ? 'Saved schedule · each team plays every other team once.' : 'Not saved yet · each team plays every other team once.'}</p>
             {leagueRounds.map((round) => <details className="league-round" key={round.name}>
               <summary>{round.name}<span>{round.matches.length} fixtures</span></summary>
               <div className="league-fixtures">{round.matches.map((match, index) => <div className="league-fixture" key={`${round.name}-${index}`}><strong>{match.teamA.name}</strong><span>{match.bye ? 'Bye' : 'vs'}</span>{match.teamB && <strong>{match.teamB.name}</strong>}</div>)}</div>
@@ -582,8 +582,8 @@ function TeamDialog({
             </div>}
             {leagueScheduleMessageTournamentId === tournament.id && leagueScheduleMessage && <p className="form-note" role="status">{leagueScheduleMessage}</p>}
           </section>}
-          {groups.length > 0 && <section className="league-schedule" aria-label="Group-stage schedule preview">
-            <p className="form-note">{hasSavedGroupStage ? 'Saved fixtures · teams are balanced across groups in the listed order.' : 'Preview only · teams are balanced across groups in the listed order.'}</p>
+          {groups.length > 0 && <section className="league-schedule" aria-label="Group-stage schedule">
+            <p className="form-note">{hasSavedGroupStage ? 'Saved fixtures · teams are balanced across groups in the listed order.' : 'Not saved yet · teams are balanced across groups in the listed order.'}</p>
             {groups.map((group) => <details className="league-round" key={group.name}>
               <summary>{group.name}<span>{group.teams.length} teams</span></summary>
               <div className="league-fixtures"><p className="form-note">{group.teams.map((team) => team.name).join(' · ')}</p>
@@ -610,11 +610,11 @@ function TeamDialog({
                     {group.teams.map((team) => <option key={team.id} value={team.id} disabled={team.id === playoffQualifiers[index].winnerId}>{team.name}</option>)}
                   </select>
                 </div>)}
-                <div className="bracket-preview" aria-label="Cross-group playoff bracket preview">
+                <div className="bracket-preview" aria-label="Cross-group playoff bracket">
                   {groupPlayoffRounds.map((round) => <div className="bracket-round" key={round.name}><h3>{round.name}</h3>{round.matches.map((match) => <div className="bracket-match" key={match.number}><span>{entrantLabel(match.teamA)}</span><span>{match.teamB ? entrantLabel(match.teamB) : ''}</span></div>)}</div>)}
                 </div>
                 {hasSavedPlayoffs ? <p className="form-note">Saved playoff bracket. Qualifiers cannot be changed yet.</p> : <div className="bracket-save"><button className="button button-primary" type="button" disabled={!hasSavedGroupStage || savingPlayoffs} onClick={saveGroupPlayoffs}>{savingPlayoffs ? 'Saving...' : 'Save playoff bracket'} <Icon name="arrow" size={16} /></button>{!hasSavedGroupStage && <small>Save the group fixtures before saving playoffs.</small>}</div>}
-              </> : <p className="form-note">Playoff preview currently supports two groups.</p>}
+              </> : <p className="form-note">Cross-group playoffs currently support two groups.</p>}
             </div>
             {groupStageMessageTournamentId === tournament.id && groupStageMessage && <p className="form-note" role="status">{groupStageMessage}</p>}
           </section>}
