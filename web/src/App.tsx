@@ -6,12 +6,6 @@ import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistration
 import { getGroupPlayoffFixtures, getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupPlayoffFixtures, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
-const initialTournaments: Tournament[] = [
-  { name: 'Riverside Summer Cup', format: 'Knockout', teams: 12, status: 'Registration open', registrationOpen: true, note: '4 spots left', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Riverside Ground', startDate: '2026-06-14' },
-  { name: 'Sunday Turf League', format: 'League', teams: 8, status: 'Live', registrationOpen: false, note: '2nd innings', overs: 12, ballsPerOver: 6, powerplayOvers: 4, venue: 'Central Turf', startDate: '2026-05-03' },
-  { name: 'Northside Club Series', format: 'Groups + playoffs', teams: 16, status: 'Completed', registrationOpen: false, note: 'Winner: Cedar CC', overs: 20, ballsPerOver: 6, powerplayOvers: 6, venue: 'Northside Oval', startDate: '2026-03-22' },
-]
-
 const previewOpeningEnds = { strikerId: 'preview-batter-a', nonStrikerId: 'preview-batter-b' }
 const previewLineup = [
   { id: 'preview-batter-a', name: 'M. Patel' },
@@ -684,7 +678,7 @@ function TeamDialog({
 }
 
 function App() {
-  const [tournaments, setTournaments] = useState(initialTournaments)
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [previewDeliveries, setPreviewDeliveries] = useState<DeliveryEvent[]>([])
   const [previewNoBallRuns, setPreviewNoBallRuns] = useState(0)
   const [previewWideOutcome, setPreviewWideOutcome] = useState('1:0')
@@ -785,7 +779,6 @@ function App() {
   }, [organizerUid, previewMatch, previewMatchKey])
 
   const loadingTournaments = Boolean(organizerUid && loadedOrganizerUid !== organizerUid)
-  const visibleTournaments = organizerUid ? tournaments : initialTournaments
   const previewBallsPerOver = previewMatch?.ballsPerOver ?? 6
   const previewOversLimit = previewMatch?.oversLimit ?? 20
   const previewScore = summarizeInnings(previewDeliveries, previewBallsPerOver)
@@ -966,7 +959,6 @@ function App() {
               <h1>Cricket, <em>in good order.</em></h1>
               <p>One home for your tournaments, teams, and match days.</p>
             </div>
-            <span className="preview-tag">Sample workspace</span>
           </section>
 
           <section className="overview-grid" aria-label="Season overview">
@@ -1037,8 +1029,8 @@ function App() {
               <div><span className="eyebrow">The season board</span><h2>Your tournaments <span>{tournaments.length}</span></h2></div>
               <button className="text-action" type="button" onClick={() => dialogRef.current?.showModal()}>Create tournament <Icon name="arrow" size={16} /></button>
             </div>
-            {loadingTournaments ? <p className="demo-disclaimer">Loading your tournaments...</p> : visibleTournaments.length === 0 ? <p className="demo-disclaimer">No tournaments yet. Create one to start your season.</p> : <div className="tournament-list">
-              {visibleTournaments.map((tournament, index) => (
+            {loadingTournaments ? <p className="demo-disclaimer">Loading your tournaments...</p> : tournaments.length === 0 ? <p className="demo-disclaimer">No tournaments yet. Create one to start your season.</p> : <div className="tournament-list">
+              {tournaments.map((tournament, index) => (
                 <article className="tournament-row" key={`${tournament.name}-${index}`}>
                   <div className={`tournament-glyph glyph-${index % 3}`}><Icon name={index % 3 === 1 ? 'score' : 'cup'} size={19} /></div>
                   <div className="tournament-name"><strong>{tournament.name}</strong><span>{tournament.format} <i /> {tournament.teams ? `${tournament.teams} teams` : 'No teams yet'}</span></div>
@@ -1048,7 +1040,7 @@ function App() {
                 </article>
               ))}
             </div>}
-            {!organizerUid && <p className="demo-disclaimer"><Icon name="check" size={14} /> Sample details are for layout preview only. New tournaments stay in memory until you refresh.</p>}
+            {!organizerUid && <p className="demo-disclaimer"><Icon name="check" size={14} /> Not signed in · new tournaments stay on this screen until you refresh.</p>}
           </section>
 
           <section className="next-steps" id="next-steps">

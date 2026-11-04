@@ -43,8 +43,6 @@ h1, h2, p { margin-top: 0; }
 .page-heading h1 { margin: 8px 0 8px; color: #1e3529; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: clamp(38px, 4vw, 54px); font-weight: 700; letter-spacing: -.035em; line-height: 1; }
 .page-heading h1 em { color: #49734e; font-style: normal; }
 .page-heading p { margin-bottom: 0; color: #6d786f; font-size: 13px; }
-.preview-tag { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #dfe8d5; border-radius: 999px; color: #4b6d48; background: #f4f8ed; font-size: 10px; font-weight: 700; white-space: nowrap; }
-.preview-tag::before { width: 6px; height: 6px; border-radius: 50%; background: #7ea360; content: ''; }
 .overview-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(225px, .8fr); gap: 16px; }
 .live-card { position: relative; overflow: hidden; min-height: 268px; padding: 22px 25px 18px; border-radius: 12px; color: #f5f6ef; background: #214a37; }
 .live-card::after { position: absolute; top: -145px; right: -75px; width: 350px; height: 350px; border: 1px solid #ffffff15; border-radius: 50%; box-shadow: 0 0 0 27px #ffffff08, 0 0 0 55px #ffffff06; content: ''; pointer-events: none; }
@@ -228,7 +226,6 @@ h1, h2, p { margin-top: 0; }
   .page-heading { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 21px; }
   .page-heading h1 { max-width: 310px; font-size: clamp(37px, 11vw, 48px); line-height: .98; }
   .page-heading p { max-width: 280px; font-size: 11px; line-height: 1.5; }
-  .preview-tag { margin-top: 0; padding: 6px 8px; font-size: 8px; }
   .overview-grid { gap: 0; }
   .live-card { min-height: 254px; padding: 17px 15px 15px; border-radius: 10px; }
   .live-card-top { align-items: flex-start; }
