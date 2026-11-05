@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en" data-theme="garden" data-lavish-annotate="off">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cricket tournaments - product plan</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #f4f5ed; color: #18251f; }
+    :where(.grid, .flex) > * { min-width: 0; }
+    :where(p, h1, h2, h3, li, a, label, span) { overflow-wrap: anywhere; }
+    .shell { max-width: 1100px; margin: auto; padding: 28px 20px 72px; }
+    .eyebrow { color: #47735a; font-size: .75rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .hero-panel { background: #123d2d; color: #f6f5e9; }
+    .hero-panel p { color: #d3e2d7; }
+    .section-label { display: flex; align-items: center; gap: 12px; color: #47735a; font-size: .74rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .section-label::after { content: ''; height: 1px; flex: 1; background: #cbd4c9; }
+    .choice { display: flex; align-items: flex-start; gap: .65rem; padding: .8rem; border: 1px solid #dbe2d8; border-radius: .75rem; cursor: pointer; }
+    .choice:has(input:checked) { border-color: #42845d; background: #eff7ee; }
+    .rec { display: inline-block; margin-left: .35rem; color: #47735a; font-size: .72rem; font-weight: 800; }
+    @media (max-width: 640px) { .shell { padding: 16px 14px 48px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero-panel card rounded-3xl shadow-xl">
+      <div class="card-body gap-5 p-6 sm:p-10">
+        <div class="eyebrow">Product plan · decision round 1</div>
+        <h1 class="max-w-3xl text-4xl font-black leading-tight sm:text-5xl">A simpler way to run a cricket tournament</h1>
+        <p class="max-w-2xl text-base sm:text-lg">Create a tournament, keep fixtures and results in sync, and let anyone follow the score from the boundary or at home.</p>
+        <div class="flex flex-wrap gap-2"><span class="badge badge-outline border-white/40 text-white">Responsive web app</span><span class="badge badge-outline border-white/40 text-white">Firebase Hosting</span><span class="badge badge-outline border-white/40 text-white">Firestore data</span></div>
+      </div>
+    </header>
+
+    <section class="mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+      <article class="card rounded-2xl bg-base-100 shadow-sm">
+        <div class="card-body">
+          <div class="section-label">Goal and starting point</div>
+          <h2 class="card-title mt-2 text-2xl">Make tournament day easier to run</h2>
+          <p>Organizers need one place for teams, fixtures, and results. Players and spectators need a score they can trust and check on a phone.</p>
+          <p class="text-sm opacity-70">Starting point: this repository has no app implementation or existing product design system. The audience, scoring depth, and launch scope are still open.</p>
+        </div>
+      </article>
+      <article class="card rounded-2xl bg-[#e4eee1] shadow-sm">
+        <div class="card-body">
+          <div class="section-label">Recommended first release</div>
+          <ol class="mt-2 space-y-3">
+            <li><span class="font-bold">01</span> Create tournament, teams, and squad lists.</li>
+            <li><span class="font-bold">02</span> Choose a format and publish fixtures.</li>
+            <li><span class="font-bold">03</span> Record a match and publish a live scoreboard.</li>
+            <li><span class="font-bold">04</span> Show standings and completed results.</li>
+          </ol>
+          <p class="mt-2 text-sm">Keep the first release focused on organizers and public viewing; add extra account types only if they solve a clear launch need.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="mt-11">
+      <div class="section-label">Main decisions · answer in one round</div>
+      <p class="mt-3 max-w-3xl">Choose an option in each card, then queue the answer for review. The recommendations form a coherent small first release; change any that do not fit how your tournaments work.</p>
+      <div class="mt-5 grid gap-4 md:grid-cols-2">
+        <article class="card rounded-2xl bg-base-100 shadow-sm" data-lavish-question="platform">
+          <div class="card-body">
+            <div class="eyebrow">Decision 01</div><h2 class="card-title">What should people use on match day?</h2>
+            <form class="decision" data-question="Launch platform">
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="platform" value="Responsive web app hosted on Firebase Hosting" checked><span><b>Responsive web app</b><span class="rec">Recommended</span><br><small>Works on phones and laptops; public score pages are easy to share.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="platform" value="Installable mobile app for Android and iPhone"><span><b>Installable mobile app</b><br><small>More native device integration, but public access and publishing need extra work.</small></span></label>
+              <button class="btn btn-sm btn-outline mt-2" type="submit">Queue this answer</button>
+            </form>
+          </div>
+        </article>
+        <article class="card rounded-2xl bg-base-100 shadow-sm" data-lavish-question="audience">
+          <div class="card-body">
+            <div class="eyebrow">Decision 02</div><h2 class="card-title">Who is the app for at launch?</h2>
+            <form class="decision" data-question="Who uses the app">
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="audience" value="One organizer manages; anyone can view public tournaments and scores" checked><span><b>Organizer + public viewers</b><span class="rec">Recommended</span><br><small>One role runs the event; score pages are easy to share.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="audience" value="Organizers and team representatives both sign in"><span><b>Organizer + team representatives</b><br><small>Team reps maintain their own team and squad details.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="audience" value="Organizers, scorers, team representatives, and viewers have separate roles"><span><b>Multiple signed-in roles</b><br><small>More control for larger leagues and shared operations.</small></span></label>
+              <button class="btn btn-sm btn-outline mt-2" type="submit">Queue this answer</button>
+            </form>
+          </div>
+        </article>
+        <article class="card rounded-2xl bg-base-100 shadow-sm" data-lavish-question="scoring">
+          <div class="card-body">
+            <div class="eyebrow">Decision 03</div><h2 class="card-title">How detailed should live scoring be?</h2>
+            <form class="decision" data-question="Scoring depth">
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="scoring" value="Ball-by-ball scoring with live batter, bowler, innings, and match state" checked><span><b>Ball by ball</b><span class="rec">Recommended</span><br><small>Live totals, overs, wickets, batter and bowler figures.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="scoring" value="Update the score and wickets manually during an innings"><span><b>Manual score updates</b><br><small>Faster to build, but no reliable delivery history or player figures.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="scoring" value="Publish final innings totals and result only"><span><b>Final score only</b><br><small>Useful when live operation is out of scope.</small></span></label>
+              <button class="btn btn-sm btn-outline mt-2" type="submit">Queue this answer</button>
+            </form>
+          </div>
+        </article>
+        <article class="card rounded-2xl bg-base-100 shadow-sm" data-lavish-question="formats">
+          <div class="card-body">
+            <div class="eyebrow">Decision 04</div><h2 class="card-title">Which tournament formats must work first?</h2>
+            <form class="decision" data-question="Tournament formats">
+              <label class="choice"><input class="checkbox checkbox-success mt-1" type="checkbox" name="formats" value="Single-elimination knockout" checked><span><b>Knockout</b><span class="rec">Recommended</span><br><small>Single loss eliminates a team.</small></span></label>
+              <label class="choice"><input class="checkbox checkbox-success mt-1" type="checkbox" name="formats" value="League / round robin"><span><b>League / round robin</b><br><small>Teams accumulate points across scheduled matches.</small></span></label>
+              <label class="choice"><input class="checkbox checkbox-success mt-1" type="checkbox" name="formats" value="Groups followed by knockout playoffs"><span><b>Groups + playoffs</b><br><small>Group standings feed into a knockout bracket.</small></span></label>
+              <button class="btn btn-sm btn-outline mt-2" type="submit">Queue this answer</button>
+            </form>
+          </div>
+        </article>
+        <article class="card rounded-2xl bg-base-100 shadow-sm" data-lavish-question="files">
+          <div class="card-body">
+            <div class="eyebrow">Decision 05 · Firebase constraint</div><h2 class="card-title">Do you need uploaded photos or files?</h2>
+            <p class="text-sm">Spark supports free quotas for Firestore and Hosting, but Cloud Storage for Firebase requires Blaze as of February 3, 2026. Firestore can store tournament records; it is not a file bucket.</p>
+            <form class="decision" data-question="File uploads and Firebase plan">
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="files" value="Stay on Spark; do not support user-uploaded files in the first release" checked><span><b>Stay on Spark; no uploads in v1</b><span class="rec">Recommended</span><br><small>Use text names and simple generated initials for teams.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="files" value="Use Firebase Storage and accept upgrading to Blaze with billing controls"><span><b>Allow uploads; use Blaze</b><br><small>Store team badges and other media, with a billing account and usage monitoring.</small></span></label>
+              <label class="choice"><input class="radio radio-success mt-1" type="radio" name="files" value="Keep Spark and choose a separate file-storage provider"><span><b>Keep Spark; use another file host</b><br><small>Add a separate service and its operational tradeoffs.</small></span></label>
+              <button class="btn btn-sm btn-outline mt-2" type="submit">Queue this answer</button>
+            </form>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="mt-11 grid gap-6 lg:grid-cols-2">
+      <article class="card rounded-2xl bg-base-100 shadow-sm">
+        <div class="card-body">
+          <div class="section-label">Proposed build sequence</div>
+          <ul class="mt-2 space-y-3">
+            <li><b>1. Tournament setup</b> - teams, squads, format, overs, and match rules.</li>
+            <li><b>2. Fixtures and standings</b> - generate matches and update points from results.</li>
+            <li><b>3. Match scoring</b> - scorer workflow, match state, and public live score.</li>
+            <li><b>4. Release basics</b> - sign-in, role checks, Firestore rules, and Firebase Hosting.</li>
+          </ul>
+        </div>
+      </article>
+      <article class="card rounded-2xl bg-base-100 shadow-sm">
+        <div class="card-body">
+          <div class="section-label">Constraints and risks</div>
+          <ul class="mt-2 list-disc space-y-2 pl-5">
+            <li>Free quotas can be exceeded; monitor reads, writes, storage, and Hosting traffic.</li>
+            <li>On Spark, Cloud Storage for Firebase is unavailable. Do not design uploads into the free-only path.</li>
+            <li>Ball-by-ball scoring needs clear correction and match-finalization behavior before implementation.</li>
+            <li>Competition rules vary; overs, tie-breaks, points, and abandoned matches need explicit defaults.</li>
+          </ul>
+          <div class="mt-3 text-xs opacity-70">Sources: <a class="link" href="https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024">Cloud Storage billing requirement</a> · <a class="link" href="https://firebase.google.com/docs/firestore/pricing">Firestore free quota</a> · <a class="link" href="https://firebase.google.com/docs/hosting/usage-quotas-pricing">Hosting quotas</a></div>
+        </div>
+      </article>
+    </section>
+
+    <footer class="mt-8 flex flex-wrap items-center gap-3 rounded-2xl bg-[#e4eee1] p-5">
+      <button id="copy-answers" class="btn btn-primary">Copy selected answers</button>
+      <span id="status" class="text-sm" role="status" aria-live="polite">Select your preferences, then queue each answer or copy them into chat.</span>
+    </footer>
+  </main>
+  <script>
+    document.querySelectorAll('.decision').forEach((form) => form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const values = [...form.querySelectorAll('input:checked')].map((input) => input.value);
+      if (!values.length) return;
+      const question = form.dataset.question;
+      const answer = question + ': ' + values.join('; ');
+      if (window.lavish?.queuePrompt) window.lavish.queuePrompt(answer, { tag: 'choice', text: answer, element: form, data: { question, answer: values } });
+      document.querySelector('#status').textContent = 'Queued: ' + answer;
+    }));
+    document.querySelector('#copy-answers').addEventListener('click', async () => {
+      const answers = [...document.querySelectorAll('.decision')].map((form) => {
+        const values = [...form.querySelectorAll('input:checked')].map((input) => input.value);
+        return values.length ? form.dataset.question + ': ' + values.join('; ') : '';
+      }).filter(Boolean).join('\n');
+      if (!answers) return;
+      try {
+        await navigator.clipboard.writeText(answers);
+        document.querySelector('#status').textContent = 'Selected answers copied. Paste them in chat.';
+      } catch {
+        document.querySelector('#status').textContent = answers;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+.npm-cache/
+node_modules/
+dist/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+.env*
+!.env.example
+graphify-out/

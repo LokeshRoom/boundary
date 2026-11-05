@@ -1,0 +1,384 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function ownsTournament(tournamentId) {
+      return request.auth != null
+        && get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.organizerUid == request.auth.uid;
+    }
+
+    function validTournament(data) {
+      return data.keys().hasAll([
+          'name', 'format', 'status', 'organizerUid', 'oversPerInnings',
+          'registrationOpen', 'createdAt', 'updatedAt', 'startDate', 'venue',
+          'ballsPerOver', 'powerplayOvers'
+        ])
+        && data.keys().hasOnly([
+          'name', 'format', 'status', 'organizerUid', 'oversPerInnings',
+          'registrationOpen', 'createdAt', 'updatedAt', 'startDate', 'endDate', 'venue',
+          'ballsPerOver', 'powerplayOvers', 'teamCount'
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.format in ['KNOCKOUT', 'LEAGUE', 'GROUP_KNOCKOUT']
+        && data.status in ['REGISTRATION', 'UPCOMING', 'LIVE', 'COMPLETED']
+        && data.organizerUid is string
+        && data.organizerUid == request.auth.uid
+        && data.oversPerInnings is int
+        && data.oversPerInnings > 0
+        && data.oversPerInnings <= 100
+        && data.ballsPerOver is int
+        && data.ballsPerOver > 0
+        && data.ballsPerOver <= 12
+        && data.powerplayOvers is int
+        && data.powerplayOvers >= 0
+        && data.powerplayOvers <= data.oversPerInnings
+        && (!data.keys().hasAny(['teamCount']) || (
+          data.teamCount is int
+          && data.teamCount >= 0
+          && data.teamCount <= 1000
+        ))
+        && data.registrationOpen is bool
+        && data.startDate is string
+        && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.venue is string
+        && data.venue.size() > 0
+        && data.venue.size() <= 100
+        && (!data.keys().hasAny(['endDate']) || (
+          data.endDate is string
+          && data.endDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+          && data.endDate >= data.startDate
+        ))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validTeam(data) {
+      return data.keys().hasAll(['name', 'shortName', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'shortName', 'status', 'createdAt', 'updatedAt'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.shortName is string
+        && data.shortName.size() > 0
+        && data.shortName.size() <= 5
+        && data.status == 'APPROVED'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validPlayer(data) {
+      return data.keys().hasAll(['name', 'jerseyNumber', 'role'])
+        && data.keys().hasOnly(['name', 'jerseyNumber', 'role'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.jerseyNumber is int
+        && data.jerseyNumber >= 0
+        && data.jerseyNumber <= 99
+        && data.role in ['BATTER', 'BOWLER', 'ALL_ROUNDER', 'WICKETKEEPER'];
+    }
+
+    function validFixture(data, fixtureId) {
+      return data.keys().hasAll(['format', 'createdAt', 'updatedAt'])
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && ((fixtureId in ['knockout', 'league']
+          && data.keys().hasAll(['rounds'])
+          && data.keys().hasOnly(['format', 'rounds', 'createdAt', 'updatedAt'])
+          && data.rounds is list
+          && data.rounds.size() > 0
+          && ((fixtureId == 'knockout' && data.format == 'KNOCKOUT' && data.rounds.size() <= 7)
+            || (fixtureId == 'league' && data.format == 'ROUND_ROBIN' && data.rounds.size() <= 63)))
+          || (fixtureId == 'groups'
+            && data.keys().hasAll(['groups'])
+            && data.keys().hasOnly(['format', 'groups', 'createdAt', 'updatedAt'])
+            && data.format == 'GROUP_STAGE'
+            && data.groups is list
+            && data.groups.size() >= 2
+            && data.groups.size() <= 32)
+          || (fixtureId == 'playoffs'
+            && data.keys().hasAll(['qualifiers', 'rounds'])
+            && data.keys().hasOnly(['format', 'qualifiers', 'rounds', 'createdAt', 'updatedAt'])
+            && data.format == 'GROUP_PLAYOFFS'
+            && data.qualifiers is list
+            && data.qualifiers.size() == 2
+            && data.qualifiers[0] is map
+            && data.qualifiers[1] is map
+            && data.qualifiers[0].keys().hasAll(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[0].keys().hasOnly(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[1].keys().hasAll(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[1].keys().hasOnly(['groupName', 'winnerId', 'runnerUpId'])
+            && data.qualifiers[0].groupName is string
+            && data.qualifiers[0].groupName.size() > 0
+            && data.qualifiers[1].groupName is string
+            && data.qualifiers[1].groupName.size() > 0
+            && data.qualifiers[0].groupName != data.qualifiers[1].groupName
+            && data.qualifiers[0].winnerId is string
+            && data.qualifiers[0].winnerId.size() > 0
+            && data.qualifiers[0].runnerUpId is string
+            && data.qualifiers[0].runnerUpId.size() > 0
+            && data.qualifiers[0].winnerId != data.qualifiers[0].runnerUpId
+            && data.qualifiers[1].winnerId is string
+            && data.qualifiers[1].winnerId.size() > 0
+            && data.qualifiers[1].runnerUpId is string
+            && data.qualifiers[1].runnerUpId.size() > 0
+            && data.qualifiers[1].winnerId != data.qualifiers[1].runnerUpId
+            && data.qualifiers[0].winnerId != data.qualifiers[1].winnerId
+            && data.qualifiers[0].winnerId != data.qualifiers[1].runnerUpId
+            && data.qualifiers[0].runnerUpId != data.qualifiers[1].winnerId
+            && data.qualifiers[0].runnerUpId != data.qualifiers[1].runnerUpId
+            && data.rounds is list
+            && data.rounds.size() == 2));
+    }
+
+    function validMatchTeam(data) {
+      return data is map
+        && data.keys().hasAll(['id', 'name'])
+        && data.keys().hasOnly(['id', 'name'])
+        && data.id is string
+        && data.id.size() > 0
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60;
+    }
+
+    function validLiveMatch(data) {
+      return data.keys().hasAll([
+          'tournamentId', 'fixtureId', 'stage', 'roundName', 'matchNumber',
+          'teamA', 'teamB', 'currentInnings', 'scoreSummary', 'recentBalls',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'tournamentId', 'fixtureId', 'stage', 'roundName', 'groupName', 'matchNumber',
+          'teamA', 'teamB', 'currentInnings', 'scoreSummary', 'recentBalls',
+          'createdAt', 'updatedAt'
+        ])
+        && data.tournamentId is string
+        && data.fixtureId is string
+        && data.stage in ['KNOCKOUT', 'LEAGUE', 'GROUP']
+        && data.roundName is string
+        && data.roundName.size() > 0
+        && data.roundName.size() <= 40
+        && (!('groupName' in data) || (data.groupName is string && data.groupName.size() <= 40))
+        && data.matchNumber is int
+        && data.matchNumber > 0
+        && validMatchTeam(data.teamA)
+        && validMatchTeam(data.teamB)
+        && data.currentInnings in [1, 2]
+        && data.scoreSummary is map
+        && data.scoreSummary.keys().hasAll(['runs', 'wickets', 'legalBalls', 'overs', 'runRate', 'runsOffBat', 'extras'])
+        && data.scoreSummary.keys().hasOnly(['runs', 'wickets', 'legalBalls', 'overs', 'runRate', 'runsOffBat', 'extras'])
+        && data.scoreSummary.runs is int
+        && data.scoreSummary.runs >= 0
+        && data.scoreSummary.wickets is int
+        && data.scoreSummary.wickets >= 0
+        && data.scoreSummary.legalBalls is int
+        && data.scoreSummary.legalBalls >= 0
+        && data.scoreSummary.overs is string
+        && data.scoreSummary.runRate is number
+        && data.scoreSummary.runsOffBat is int
+        && data.scoreSummary.runsOffBat >= 0
+        && data.scoreSummary.extras is map
+        && data.scoreSummary.extras.keys().hasAll(['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY'])
+        && data.scoreSummary.extras.keys().hasOnly(['WIDE', 'NO_BALL', 'BYE', 'LEG_BYE', 'PENALTY'])
+        && data.scoreSummary.extras.WIDE is int
+        && data.scoreSummary.extras.WIDE >= 0
+        && data.scoreSummary.extras.NO_BALL is int
+        && data.scoreSummary.extras.NO_BALL >= 0
+        && data.scoreSummary.extras.BYE is int
+        && data.scoreSummary.extras.BYE >= 0
+        && data.scoreSummary.extras.LEG_BYE is int
+        && data.scoreSummary.extras.LEG_BYE >= 0
+        && data.scoreSummary.extras.PENALTY is int
+        && data.scoreSummary.extras.PENALTY >= 0
+        && data.scoreSummary.runs == data.scoreSummary.runsOffBat
+          + data.scoreSummary.extras.WIDE
+          + data.scoreSummary.extras.NO_BALL
+          + data.scoreSummary.extras.BYE
+          + data.scoreSummary.extras.LEG_BYE
+          + data.scoreSummary.extras.PENALTY
+        && data.recentBalls is list
+        && data.recentBalls.size() <= 18
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validOverBatch(data) {
+      return data.keys().hasAll(['innings', 'overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['innings', 'overNumber', 'deliveries', 'createdAt', 'updatedAt'])
+        && data.innings in [1, 2]
+        && data.overNumber is int
+        && data.overNumber > 0
+        && data.overNumber <= 100
+        && data.deliveries is list
+        && data.deliveries.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validPrivateRegistration(data) {
+      return data.keys().hasAll(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['captainName', 'captainContact', 'createdAt', 'updatedAt'])
+        && data.captainName is string
+        && data.captainName.size() > 0
+        && data.captainName.size() <= 80
+        && data.captainContact is string
+        && data.captainContact.size() >= 5
+        && data.captainContact.size() <= 120
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function registrationIsOpen(tournamentId) {
+      let tournament = get(/databases/$(database)/documents/tournaments/$(tournamentId)).data;
+      return tournament.status == 'REGISTRATION' && tournament.registrationOpen == true;
+    }
+
+    function validPendingRegistration(data) {
+      return data.keys().hasAll([
+          'teamName', 'shortName', 'captainName', 'captainContact', 'submittedAt'
+        ])
+        && data.keys().hasOnly([
+          'teamName', 'shortName', 'captainName', 'captainContact', 'submittedAt'
+        ])
+        && data.teamName is string
+        && data.teamName.size() > 0
+        && data.teamName.size() <= 60
+        && data.shortName is string
+        && data.shortName.size() > 0
+        && data.shortName.size() <= 5
+        && data.captainName is string
+        && data.captainName.size() > 0
+        && data.captainName.size() <= 80
+        && data.captainContact is string
+        && data.captainContact.size() >= 5
+        && data.captainContact.size() <= 120
+        && data.submittedAt is timestamp
+        && data.submittedAt == request.time;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create: if ownsTournament(request.resource.data.tournamentId)
+        && validLiveMatch(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if ownsTournament(resource.data.tournamentId)
+        && validLiveMatch(request.resource.data)
+        && request.resource.data.tournamentId == resource.data.tournamentId
+        && request.resource.data.fixtureId == resource.data.fixtureId
+        && request.resource.data.stage == resource.data.stage
+        && request.resource.data.roundName == resource.data.roundName
+        && request.resource.data.get('groupName', '') == resource.data.get('groupName', '')
+        && request.resource.data.matchNumber == resource.data.matchNumber
+        && request.resource.data.teamA == resource.data.teamA
+        && request.resource.data.teamB == resource.data.teamB
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsTournament(resource.data.tournamentId);
+
+      match /overs/{overId} {
+        allow read: if true;
+        allow create: if exists(/databases/$(database)/documents/matches/$(matchId))
+          && ownsTournament(get(/databases/$(database)/documents/matches/$(matchId)).data.tournamentId)
+          && validOverBatch(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsTournament(get(/databases/$(database)/documents/matches/$(matchId)).data.tournamentId)
+          && validOverBatch(request.resource.data)
+          && request.resource.data.overNumber == resource.data.overNumber
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(get(/databases/$(database)/documents/matches/$(matchId)).data.tournamentId);
+      }
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && validTournament(request.resource.data)
+        && request.resource.data.status == 'REGISTRATION'
+        && request.resource.data.registrationOpen == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedInAs(resource.data.organizerUid)
+        && validTournament(request.resource.data)
+        && request.resource.data.organizerUid == resource.data.organizerUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedInAs(resource.data.organizerUid);
+
+      match /teams/{teamId} {
+        allow read: if true;
+        allow create: if ownsTournament(tournamentId)
+          && validTeam(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsTournament(tournamentId)
+          && validTeam(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(tournamentId);
+
+        match /players/{playerId} {
+          allow read: if true;
+          allow create, update: if ownsTournament(tournamentId) && validPlayer(request.resource.data);
+          allow delete: if ownsTournament(tournamentId);
+        }
+      }
+
+      match /privateRegistrations/{registrationId} {
+        allow read: if ownsTournament(tournamentId);
+        allow create: if ownsTournament(tournamentId)
+          && existsAfter(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(registrationId))
+          && validPrivateRegistration(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsTournament(tournamentId)
+          && validPrivateRegistration(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(tournamentId);
+      }
+
+      match /pendingRegistrations/{registrationId} {
+        allow create: if request.auth != null
+          && registrationId == request.auth.uid
+          && registrationIsOpen(tournamentId)
+          && validPendingRegistration(request.resource.data);
+        allow read, update, delete: if ownsTournament(tournamentId);
+
+        match /players/{playerId} {
+          allow create: if request.auth != null
+            && registrationId == request.auth.uid
+            && registrationIsOpen(tournamentId)
+            && existsAfter(/databases/$(database)/documents/tournaments/$(tournamentId)/pendingRegistrations/$(registrationId))
+            && validPlayer(request.resource.data);
+          allow read, update, delete: if ownsTournament(tournamentId);
+        }
+      }
+
+      match /fixtures/{fixtureId} {
+        allow read: if true;
+        allow create: if fixtureId in ['knockout', 'league', 'groups', 'playoffs']
+          && ownsTournament(tournamentId)
+          && (fixtureId != 'playoffs' || get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.format == 'GROUP_KNOCKOUT')
+          && validFixture(request.resource.data, fixtureId)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if fixtureId == 'knockout'
+          && ownsTournament(tournamentId)
+          && validFixture(request.resource.data, fixtureId)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsTournament(tournamentId);
+      }
+    }
+  }
+}
