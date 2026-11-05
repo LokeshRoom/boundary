@@ -37,7 +37,9 @@ function liveMatchDocumentId(tournamentId: string, fixtureId: string) {
   return `${tournamentId}_${fixtureId}`
 }
 
-export async function saveLiveMatchSnapshot(tournamentId: string, fixture: PlayableFixture, snapshot: LiveMatchSnapshot) {
+export async function saveLiveMatchSnapshot(tournamentId: string, fixture: PlayableFixture, snapshot: LiveMatchSnapshot, batches: OverDeliveryBatch[], previousOverCount: number, ballsPerOver: number) {
+  if (!Number.isInteger(previousOverCount) || previousOverCount < 0 || previousOverCount > 100) throw new Error('Previous over count must be between 0 and 100.')
+  flattenOverBatches(batches, ballsPerOver)
   const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
   const matchRef = doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id))
 
@@ -61,6 +63,17 @@ export async function saveLiveMatchSnapshot(tournamentId: string, fixture: Playa
       transaction.update(matchRef, updated)
     } else {
       transaction.set(matchRef, { ...updated, createdAt: serverTimestamp() })
+    }
+
+    for (const batch of batches) {
+      const overId = batch.innings === 1 ? String(batch.overNumber) : `${batch.innings}_${batch.overNumber}`
+      transaction.set(doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs', overId), {
+        ...batch,
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+    }
+    for (let overNumber = previousOverCount; overNumber > batches.length; overNumber -= 1) {
+      transaction.delete(doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs', String(overNumber)))
     }
   })
 }
@@ -92,27 +105,6 @@ export async function getPublicTournamentScoreSettings(tournamentId: string): Pr
   const data = snapshot.data()
   if (typeof data.name !== 'string' || !data.name.trim() || !Number.isInteger(data.ballsPerOver) || data.ballsPerOver < 1 || data.ballsPerOver > 12) throw new Error('Saved tournament score settings are invalid.')
   return { name: data.name, ballsPerOver: data.ballsPerOver }
-}
-
-export async function saveOverDeliveryBatch(tournamentId: string, fixture: PlayableFixture, overNumber: number, deliveries: OverDeliveryBatch['deliveries'] | null, ballsPerOver: number, innings: 1 | 2 = 1) {
-  if (!Number.isInteger(overNumber) || overNumber < 1 || overNumber > 100) throw new Error('Over number must be between 1 and 100.')
-  if (innings !== 1 && innings !== 2) throw new Error('Innings must be 1 or 2.')
-  if (deliveries) flattenOverBatches([{ innings, overNumber: 1, deliveries }], ballsPerOver)
-  const { firestore, doc, runTransaction, serverTimestamp } = await getFirebaseFirestore()
-  const overId = innings === 1 ? String(overNumber) : `${innings}_${overNumber}`
-  const overRef = doc(firestore, 'matches', liveMatchDocumentId(tournamentId, fixture.id), 'overs', overId)
-
-  await runTransaction(firestore, async (transaction) => {
-    const savedOver = await transaction.get(overRef)
-    if (!deliveries) {
-      if (savedOver.exists()) transaction.delete(overRef)
-      return
-    }
-
-    const updated = { innings, overNumber, deliveries, updatedAt: serverTimestamp() }
-    if (savedOver.exists()) transaction.update(overRef, updated)
-    else transaction.set(overRef, { ...updated, createdAt: serverTimestamp() })
-  })
 }
 
 export async function getOverDeliveryBatches(tournamentId: string, fixture: PlayableFixture, ballsPerOver: number, innings: 1 | 2 = 1): Promise<OverDeliveryBatch[]> {

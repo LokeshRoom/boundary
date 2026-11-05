@@ -199,7 +199,15 @@ test('builds a compact live snapshot with current totals and only the latest 18 
   const snapshot = buildLiveMatchSnapshot(deliveries, 6, 2)
 
   assert.equal(snapshot.currentInnings, 2)
-  assert.deepEqual(snapshot.scoreSummary, summarizeInnings(deliveries, 6))
+  assert.deepEqual(snapshot.scoreSummary, {
+    runsOffBat: 10,
+    wickets: 0,
+    legalBalls: 20,
+    extras: { WIDE: 0, NO_BALL: 0, BYE: 0, LEG_BYE: 0, PENALTY: 0 },
+    runs: 10,
+    overs: '3.2',
+    runRate: 3,
+  })
   assert.equal(snapshot.recentBalls.length, 18)
   assert.equal(snapshot.recentBalls[0], deliveries[2])
   assert.equal(snapshot.recentBalls.at(-1), deliveries.at(-1))

@@ -3,7 +3,7 @@ import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
 import { generateGroupStage, generateKnockoutRounds, generateRoundRobinRounds, generateTwoGroupPlayoffRounds, listPlayableFixtures, ROUND_ROBIN_TEAM_LIMIT, type FixtureEntrant, type GroupPlayoffFixtures, type GroupStageGroup, type KnockoutRound, type PlayableFixture, type RoundRobinRound } from './fixtures'
 import { buildLiveMatchSnapshot, flattenOverBatches, getBattingEndsAfter, groupDeliveriesByOver, isInningsComplete, makeNoBallDelivery, makeWideDelivery, makeWicketDelivery, summarizeBattingScorecard, summarizeBowlingScorecard, summarizeInnings, undoLastDelivery, type DeliveryEvent, type DismissalType } from './scoring'
 import { addPlayer, approveTeamRegistration, createTeam, listPendingRegistrations, listPlayers, listTeams, rejectTeamRegistration, type NewPlayer, type NewTeam, type PendingRegistration, type Player, type PlayerRole, type Team } from './teams'
-import { getGroupPlayoffFixtures, getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupPlayoffFixtures, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveOverDeliveryBatch, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
+import { getGroupPlayoffFixtures, getGroupStageFixtures, getKnockoutFixtures, getLiveMatchSnapshot, getOverDeliveryBatches, getRoundRobinFixtures, listOwnedTournaments, saveGroupPlayoffFixtures, saveGroupStageFixtures, saveKnockoutFixtures, saveLiveMatchSnapshot, saveRoundRobinFixtures, saveTournament, updateTournamentRegistration, type Format, type Status, type Tournament } from './tournaments'
 import './App.css'
 
 const navItems = [
@@ -824,16 +824,9 @@ function App() {
     const batches = groupDeliveriesByOver(deliveries, previewMatch.ballsPerOver)
     setScoreSaveStatus('Saving score...')
     const save = scoreSaveQueueRef.current.then(async () => {
-      await saveLiveMatchSnapshot(previewMatch.tournamentId!, previewMatch.fixture, buildLiveMatchSnapshot(deliveries, previewMatch.ballsPerOver))
       const previousOverCount = lastPersistedMatchRef.current?.key === previewMatchKey ? lastPersistedMatchRef.current.overCount : 0
       const currentOverCount = batches.length
-      if (currentOverCount > 0) {
-        const lastOver = batches[currentOverCount - 1]
-        await saveOverDeliveryBatch(previewMatch.tournamentId!, previewMatch.fixture, lastOver.overNumber, lastOver.deliveries, previewMatch.ballsPerOver)
-      }
-      for (let overNumber = previousOverCount; overNumber > currentOverCount; overNumber -= 1) {
-        await saveOverDeliveryBatch(previewMatch.tournamentId!, previewMatch.fixture, overNumber, null, previewMatch.ballsPerOver)
-      }
+      await saveLiveMatchSnapshot(previewMatch.tournamentId!, previewMatch.fixture, buildLiveMatchSnapshot(deliveries, previewMatch.ballsPerOver), batches, previousOverCount, previewMatch.ballsPerOver)
       lastPersistedMatchRef.current = { key: previewMatchKey, deliveries: deliveriesJson, overCount: currentOverCount }
     })
     scoreSaveQueueRef.current = save.catch(() => {})
